@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+
+<izpack:registry version="5.0"
+                 xmlns:izpack="http://izpack.org/schema/registry"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="http://izpack.org/schema/registry http://izpack.org/schema/5.0/izpack-registry-5.0.xsd">
+
+    <pack name="UninstallStuff">
+        <value name="DisplayName"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="Esup DSS Client"/>
+        <value name="DisplayVersion"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="@app.version@"/>
+        <value name="UninstallString"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="&quot;$INSTALL_PATH\java\win\zulu@jdk.zulu.version@-win_x64\bin\javaw.exe&quot; -jar &quot;$INSTALL_PATH\uninstaller\uninstaller.jar&quot;"/>
+        <value name="DisplayIcon"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="$INSTALL_PATH\icon\esupdssclient.ico"/>
+        <value name="HelpLink"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="https://www.esup-portail.org/wiki/display/SIGN/Esup-DSS-Client"/>
+        <value name="Publisher"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="Consortium ESUP-Portail"/>
+        <value name="InstallLocation"
+               keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
+               root="HKLM"
+               string="$INSTALL_PATH"/>
+
+    </pack>
+    <pack name="Core">
+        <key
+                keypath="SOFTWARE\IzForge\IzPack\Esup DSS Client\esup-dss-client"
+                root="HKLM"/>
+        <value name="Path"
+               keypath="SOFTWARE\IzForge\IzPack\Esup DSS Client"
+               root="HKLM"
+               string="$INSTALL_PATH"/>
+        <value name="DWORD"
+               keypath="SOFTWARE\IzForge\IzPack\Esup DSS Client"
+               root="HKLM"
+               dword="42"/>
+        <value name="BIN"
+               keypath="SOFTWARE\IzForge\IzPack\Esup DSS Client"
+               root="HKLM">
+            <bin data="42, 49, 4e, 20, 54, 45, 53, 54"/>
+            <bin data="42, 49, 4e, 20, 54, 45, 53, 54"/>
+        </value>
+        <value name="MULTI"
+               keypath="SOFTWARE\IzForge\IzPack\Esup DSS Client"
+               root="HKLM">
+            <multi data="A multi string with three elements"/>
+            <multi data="Element two"/>
+            <multi data="Element three"/>
+        </value>
+    </pack>
+</izpack:registry>

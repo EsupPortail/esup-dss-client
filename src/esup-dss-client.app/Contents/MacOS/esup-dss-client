@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/usr/local/bin
+/Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-17.jre/Contents/Home/bin/java --add-exports javafx.graphics/com.sun.javafx.application=ALL-UNNAMED -jar /Applications/esup-dss-client.app/Contents/Resources/esup-dss-client.jar

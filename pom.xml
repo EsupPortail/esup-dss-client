@@ -1,0 +1,661 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>org.esupportail</groupId>
+	<artifactId>esupdssclient</artifactId>
+	<version>1.0</version>
+	<packaging>jar</packaging>
+	<name>Esup-DSS-Client</name>
+	<description>DSS Client, Multi-browser, multi-platform, OpenSC remote signature tool.</description>
+	<organization>
+		<name>Consortium ESUP-Portail</name>
+	</organization>
+	<inceptionYear>2023</inceptionYear>
+	<developers>
+		<developer>
+			<name>David Naramski</name>
+			<organization>Nowina</organization>
+			<organizationUrl>http://nowina.lu/</organizationUrl>
+		</developer>
+		<developer>
+			<name>Jean Lepropre</name>
+			<organization>Nowina</organization>
+			<organizationUrl>http://nowina.lu/</organizationUrl>
+		</developer>
+		<developer>
+			<name>Landry Soules</name>
+			<organization>Nowina</organization>
+			<organizationUrl>http://nowina.lu/</organizationUrl>
+		</developer>
+		<developer>
+			<name>David Lemaignent</name>
+			<organization>Université de Rouen Normandie</organization>
+			<organizationUrl>https://univ-rouen.fr</organizationUrl>
+		</developer>
+	</developers>
+
+	<licenses>
+		<license>
+			<name>European Union Public Licence (EUPL) v1.2</name>
+			<url>https://joinup.ec.europa.eu/collection/eupl</url>
+		</license>
+	</licenses>
+
+	<properties>
+		<app.version>${project.version}</app.version>
+		<java.version>17</java.version>
+		<encoding>UTF-8</encoding>
+		<skip.package>false</skip.package>
+		<dss.version>5.12.1</dss.version>
+		<maven.release.plugin.version>2.5.3</maven.release.plugin.version>
+		<slf4j.version>2.0.4</slf4j.version>
+		<jna.version>4.2.2</jna.version>
+		<mocca.version>1.3.30</mocca.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<powermock.version>2.0.9</powermock.version>
+		<openjfx.version>17</openjfx.version>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<opensc.version>0.23.0</opensc.version>
+		<izpack.version>5.1.3</izpack.version>
+		<izpack.staging>${project.build.directory}/staging</izpack.staging>
+		<macbundle.path>${project.build.directory}/mac-bundle</macbundle.path>
+		<jdk.zulu.version>17.40.19-ca-fx-jre17.0.6</jdk.zulu.version>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>ec.europa.eu-cefdigital</id>
+			<url>https://ec.europa.eu/cefdigital/artifact/content/groups/public/</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.1</version>
+		</dependency>
+
+<!--		<dependency>-->
+<!--			<groupId>org.glassfish.jaxb</groupId>-->
+<!--			<artifactId>jaxb-runtime</artifactId>-->
+<!--			<version>2.3.8</version>-->
+<!--		</dependency>-->
+
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-controls</artifactId>
+			<version>${openjfx.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics </artifactId>
+			<version>${openjfx.version}</version>
+			<classifier>win</classifier>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics </artifactId>
+			<version>${openjfx.version}</version>
+			<classifier>linux</classifier>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics </artifactId>
+			<version>${openjfx.version}</version>
+			<classifier>mac</classifier>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-web</artifactId>
+			<version>${openjfx.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-media</artifactId>
+			<version>${openjfx.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-swing</artifactId>
+			<version>${openjfx.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-fxml</artifactId>
+			<version>${openjfx.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>net.lingala.zip4j</groupId>
+			<artifactId>zip4j</artifactId>
+			<version>2.11.5</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>2.6</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.11.0</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
+			<artifactId>dss-utils-apache-commons</artifactId>
+			<version>${dss.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
+			<artifactId>dss-token</artifactId>
+			<version>${dss.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>31.1-jre</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.10.1</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.1</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>commons-logging</artifactId>
+					<groupId>commons-logging</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.4.7</version>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache.logging.log4j</groupId>-->
+<!--			<artifactId>log4j-core</artifactId>-->
+<!--			<version>2.20.0</version>-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-server</artifactId>
+			<version>10.0.15</version>
+		</dependency>
+		<dependency>
+			<groupId>org.freemarker</groupId>
+			<artifactId>freemarker</artifactId>
+			<version>2.3.32</version>
+		</dependency>
+		<dependency>
+			<groupId>com.dorkbox</groupId>
+			<artifactId>SystemTray</artifactId>
+			<version>4.1</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>logback-classic</artifactId>
+					<groupId>ch.qos.logback</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>slf4j-api</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>Executor</artifactId>
+					<groupId>com.dorkbox</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>net.java.dev.jna</groupId>
+			<artifactId>jna-platform</artifactId>
+			<version>5.8.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito2</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-easymock</artifactId>
+			<version>${powermock.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>3.3.3</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>cglib</groupId>
+			<artifactId>cglib</artifactId>
+			<version>3.3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
+			<artifactId>dss-spi</artifactId>
+			<version>${dss.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
+			<artifactId>dss-tsl-validation</artifactId>
+			<version>${dss.version}</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>slf4j-api</artifactId>
+					<groupId>org.slf4j</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
+			<artifactId>dss-diagnostic-jaxb</artifactId>
+			<version>${dss.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.izpack</groupId>
+			<artifactId>izpack-maven-plugin</artifactId>
+			<version>5.1.2</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>tika-parsers</artifactId>
+					<groupId>org.apache.tika</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-dependency-plugin</artifactId>
+			<version>2.10</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-assembly-plugin</artifactId>
+			<version>3.6.0</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>esup-dss-client</finalName>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.codehaus.izpack</groupId>
+					<artifactId>izpack-maven-plugin</artifactId>
+					<version>${izpack.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-clean-plugin</artifactId>
+					<version>2.4.1</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-deploy-plugin</artifactId>
+					<version>2.6</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-install-plugin</artifactId>
+					<version>2.3.1</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-site-plugin</artifactId>
+					<version>2.3</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.2</version>
+				<configuration>
+					<argLine>
+						--add-opens java.base/java.lang=ALL-UNNAMED
+						--add-opens java.base/java.util=ALL-UNNAMED
+						--add-exports java.xml/jdk.xml.internal=ALL-UNNAMED
+					</argLine>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.10.1</version>
+				<configuration>
+					<source>17</source>
+					<target>17</target>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.6.0</version>
+				<configuration>
+					<finalName>esup-dss-client</finalName>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<appendAssemblyId>true</appendAssemblyId>
+					<archive>
+						<manifest>
+							<mainClass>org.esupportail.esupdssclient.EsupDSSClientLauncher</mainClass>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+						<manifestEntries>
+							<Application-Name>${project.name}</Application-Name>
+							<Trusted-Library>true</Trusted-Library>
+							<Permissions>all-permissions</Permissions>
+						</manifestEntries>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>create-assembly</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>3.0.0</version>
+				<executions>
+					<execution>
+						<id>create-izpack-staging-area</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<copy todir="${izpack.staging}">
+									<fileset dir="${basedir}/src/izpack"/>
+								</copy>
+							</target>
+						</configuration>
+					</execution>
+					<execution>
+						<id>create-mac-bundle-staging-area</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target if="mac.os">
+								<copy todir="${macbundle.path}">
+									<fileset dir="${basedir}/src/mac-bundle"/>
+								</copy>
+							</target>
+						</configuration>
+					</execution>
+					<execution>
+						<id>replace-versions</id>
+						<phase>validate</phase>
+						<configuration>
+							<target>
+								<replace file="${izpack.staging}/install.xml" token="$opensc.version" value="${opensc.version}" />
+								<replace file="${izpack.staging}/opensc.sh" token="$opensc.version" value="${opensc.version}" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>replace-versions-mac</id>
+						<phase>validate</phase>
+						<configuration>
+							<target if="mac.os">
+								<replace file="${macbundle.path}/pkg.sh" token="$macbundle.path" value="${macbundle.path}" />
+								<replace file="${macbundle.path}/opensc_mac.sh" token="$opensc.version" value="${opensc.version}" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>download-required-dependencies-mac</id>
+						<phase>verify</phase>
+						<configuration>
+							<target if="mac.os">
+								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}.dmg"
+									 dest="${macbundle.path}/OpenSC.dmg"/>
+								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-macosx_x64.zip"
+									 dest="${basedir}/openjdk-mac.zip" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>download-required-dependencies</id>
+						<phase>verify</phase>
+						<configuration>
+							<target unless="mac.oc">
+								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}_win64.msi"
+									 dest="${izpack.staging}/OpenSC-${opensc.version}_win64.msi" />
+								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/opensc-${opensc.version}.tar.gz"
+									 dest="${izpack.staging}/opensc-0.23.0.tar.gz" />
+								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-win_x64.zip"
+									 dest="${basedir}/openjdk-win.zip" />
+								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-linux_x64.tar.gz"
+									 dest="${basedir}/openjdk-linux.tar.gz" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>dispatch-dependecies-mac</id>
+						<phase>verify</phase>
+						<configuration>
+							<target if="mac.os">
+								<unzip src="${basedir}/openjdk-mac.zip" dest="target/jdktempmac" />
+								<move file="${project.build.directory}/jdktempmac/zulu${jdk.zulu.version}-macosx_x64" tofile="${macbundle.path}/jdkmac"/>
+								<delete file="${project.build.directory}/openjdk-mac.zip"/>
+								<delete dir="${project.build.directory}/jdktempmac"/>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>dispatch-dependecies</id>
+						<phase>verify</phase>
+						<configuration>
+							<target unless="mac.oc">
+								<untar src="${basedir}/openjdk-linux.tar.gz" dest="${project.build.directory}/jrelinux" compression="gzip" />
+								<delete file="${project.build.directory}/openjdk-linux.tar.gz"/>
+								<unzip src="${basedir}/openjdk-win.zip" dest="${project.build.directory}/jrewin" />
+								<delete file="${project.build.directory}/openjdk-win.zip"/>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>move-compiled-jar-top-izpack-staging-dir</id>
+						<phase>package</phase>
+						<configuration>
+							<target>
+								<copy file="${project.build.directory}/esup-dss-client-jar-with-dependencies.jar" tofile="${izpack.staging}/esup-dss-client.jar"/>
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>build-mac-bundle</id>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target if="mac.os">
+								<chmod file="${macbundle.path}/*" perm="+x" type="both"/>
+								<copy file="${project.build.directory}/esup-dss-client-jar-with-dependencies.jar" tofile="${macbundle.path}/esup-dss-client.jar"/>
+								<exec executable="${macbundle.path}/pkg.sh"></exec>
+							</target>
+						</configuration>
+					</execution>
+					<execution>
+						<id>zip-installer</id>
+						<phase>install</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target unless="mac.os">
+								<zip destfile="${project.build.directory}/esup-dss-client-win64.zip">
+									<zipfileset dir="${project.build.directory}/jrewin" prefix="jrewin"/>
+									<fileset dir="${project.build.directory}" includes="esup-dss-client-installer.exe"/>
+								</zip>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.10</version>
+				<executions>
+					<execution>
+						<!-- copy *application* jars to izpack staging lib -->
+						<id>copy-product-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${izpack.staging}/lib</outputDirectory>
+							<excludeTransitive>true</excludeTransitive>
+							<stripVersion>true</stripVersion>
+							<overWriteReleases>true</overWriteReleases>
+							<overWriteSnapshots>true</overWriteSnapshots>
+							<overWriteIfNewer>true</overWriteIfNewer>
+							<excludeScope>system</excludeScope>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.izpack</groupId>
+				<artifactId>izpack-maven-plugin</artifactId>
+				<version>${izpack.version}</version>
+				<executions>
+					<execution>
+						<phase>verify</phase>
+						<goals>
+							<goal>izpack</goal>
+						</goals>
+						<configuration>
+							<classifier>esup-dss-client</classifier>
+							<baseDir>${izpack.staging}</baseDir>
+							<installFile>${izpack.staging}/install.xml</installFile>
+							<output>${project.build.directory}/esup-dss-client-installer.jar</output>
+							<mkdirs>true</mkdirs>
+							<autoIncludeUrl>false</autoIncludeUrl>
+							<autoIncludeDevelopers>false</autoIncludeDevelopers>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.codehaus.izpack</groupId>
+						<artifactId>izpack-panel</artifactId>
+						<version>${izpack.version}</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+
+			<plugin>
+				<groupId>com.akathist.maven.plugins.launch4j</groupId>
+				<artifactId>launch4j-maven-plugin</artifactId>
+				<version>2.4.1</version>
+				<executions>
+					<execution>
+						<id>l4j-gui</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>launch4j</goal>
+						</goals>
+						<configuration>
+							<headerType>gui</headerType>
+							<jar>${project.build.directory}/esup-dss-client-installer.jar</jar>
+							<outfile>${project.build.directory}/esup-dss-client-installer.exe</outfile>
+							<classPath>
+								<mainClass>com.izforge.izpack.installer.bootstrap.Installer</mainClass>
+							</classPath>
+							<jre>
+								<path>./jrewin/zulu${jdk.zulu.version}-win_x64</path>
+							</jre>
+							<versionInfo>
+								<fileVersion>1.0.0.0</fileVersion>
+								<txtFileVersion>${project.version}</txtFileVersion>
+								<fileDescription>${project.name}</fileDescription>
+								<productVersion>1.0.0.0</productVersion>
+								<txtProductVersion>1.0.0.0</txtProductVersion>
+								<txtProductVersion>1.0.0.0</txtProductVersion>
+								<copyright>C</copyright>
+								<productName>${project.name}</productName>
+								<internalName>org.esupportail.esupdssclient</internalName>
+								<originalFilename>esup-dss-client-installer.exe</originalFilename>
+							</versionInfo>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

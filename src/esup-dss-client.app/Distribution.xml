@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <pkg-ref id="org.esupportail.esup-dss-client"/>
+    <options customize="never" require-scripts="false" hostArchitectures="x86_64,arm64"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="org.esupportail.esup-dss-client"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="org.esupportail.esup-dss-client" visible="false">
+        <pkg-ref id="org.esupportail.esup-dss-client"/>
+    </choice>
+    <pkg-ref id="org.esupportail.esup-dss-client" version="1.0.0.0" onConclusion="none">Distribution.pkg</pkg-ref>
+</installer-gui-script>

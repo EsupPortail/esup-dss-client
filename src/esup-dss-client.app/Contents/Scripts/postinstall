@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+sudo chmod +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-17.jre/Contents/Home/bin/java
+sudo chmod +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-17.jre/Contents/Home/lib/jspawnhelper
+sudo chmod +x /Applications/esup-dss-client.app/Contents/scripts/opensc_mac.sh
+sudo chmod +x /Applications/esup-dss-client.app/Contents/scripts/shortcut_mac.sh
+sudo /Applications/esup-dss-client.app/Contents/scripts/opensc_mac.sh
+sudo /Applications/esup-dss-client.app/Contents/scripts/shortcut_mac.sh
+

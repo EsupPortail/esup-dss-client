@@ -1,0 +1,6 @@
+esup test log content
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<feedback>
+    <feedbackStatus xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+    <apiVersion>99</apiVersion>
+</feedback>

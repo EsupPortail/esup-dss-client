@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Esup DSS Client</string>
+    <key>CFBundleDisplayName</key>
+    <string>Esup DSS Client</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.esupportail.esup-dss-client</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>nexu</string>
+    <key>CFBundleExecutable</key>
+    <string>esup-dss-client</string>
+    <key>CFBundleIconFile</key>
+    <string>esupdssclient.icns</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+</dict>
+</plist>

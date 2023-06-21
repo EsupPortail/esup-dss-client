@@ -1,0 +1,172 @@
+<izpack:installation version="5.0"
+                     xmlns:izpack="http://izpack.org/schema/installation"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://izpack.org/schema/installation http://izpack.org/schema/5.0/izpack-installation-5.0.xsd">
+
+    <info>
+        <appname>esup-dss-client</appname>
+        <appversion>@pom.version@</appversion>
+        <authors>
+            <author name="Université Rouen Normandie"
+                    email="david.lemaignent@univ-rouen.fr" />
+        </authors>
+        <url>https://www.esup-portail.org/wiki/</url>
+        <javaversion>17</javaversion>
+        <run-privileged/>
+    </info>
+
+    <dynamicinstallerrequirements/>
+
+    <listeners>
+        <listener classname="RegistryInstallerListener" stage="install" >
+            <os family="windows"/>
+        </listener>
+        <listener classname="RegistryUninstallerListener" stage="uninstall" >
+            <os family="windows"/>
+        </listener>
+    </listeners>
+
+    <variables>
+        <variable name="DesktopShortcutCheckboxEnabled" value="true" />
+        <variable name="TargetPanel.dir.mac" value="/Applications/esup-dss-client.app"/>
+    </variables>
+
+    <resources>
+        <res id="shortcutSpec.xml" src="default_shortcut_spec.xml" parse="true" type="ant"/>
+        <res id="RegistrySpec.xml" src="default_registry_spec.xml" parse="true" type="ant"/>
+        <res id="HTMLInfoPanel.readme" src="readme.html"/>
+    </resources>
+
+    <natives>
+        <native type="izpack" name="ShellLink.dll" />
+        <native type="izpack" name="ShellLink_x64.dll" />
+        <native type="3rdparty" name="COIOSHelper.dll" uninstaller="true">
+            <os family="windows"/>
+        </native>
+        <native type="3rdparty" name="COIOSHelper_x64.dll" uninstaller="true">
+            <os family="windows"/>
+        </native>
+    </natives>
+
+    <locale>
+        <langpack iso3="eng"/>
+    </locale>
+
+    <guiprefs width="800" height="600" resizable="yes"/>
+
+    <conditions>
+        <condition type="variable" id="uninstaller">
+            <name>izpack.stage</name>
+            <value caseInsensitive="true">uninstall</value>
+        </condition>
+    </conditions>
+
+    <panels>
+        <panel classname="TargetPanel"/>
+        <panel classname="PacksPanel"/>
+        <panel classname="InstallPanel"/>
+        <panel classname="ShortcutPanel"/>
+        <panel classname="HTMLInfoPanel" id="readme">
+            <os family="unix" name="debian_linux" />
+            <os family="unix" name="ubuntu_linux" />
+            <os family="unix" name="linux" />
+        </panel>
+        <panel classname="FinishPanel"/>
+    </panels>
+
+    <packs>
+
+        <pack name="Uninstall OpenSC $opensc.version win64" required="yes" hidden="true">
+            <os family="windows" />
+            <description>Uninstall OpenSC win64 $opensc.version</description>
+            <file targetdir="${INSTALL_PATH}" src="OpenSC-$opensc.version_win64.msi" override="true" />
+            <executable targetfile="msiexec.exe" stage="uninstall" failure="ignore" keep="true">
+                <args>
+                    <arg value="\/x"/>
+                    <arg value="${INSTALL_PATH}/OpenSC-$opensc.version_win64.msi"/>
+                    <arg value="\/qn"/>
+                </args>
+                <os family="windows" />
+            </executable>
+        </pack>
+
+        <pack name="Uninstall OpenSC $opensc.version linux" required="yes" hidden="true">
+            <os family="unix" name="debian_linux" />
+            <os family="unix" name="ubuntu_linux" />
+            <os family="unix" name="linux" />
+            <description>Uninstall OpenSC Linux $opensc.version</description>
+            <file targetdir="${INSTALL_PATH}" src="opensc-uninstall.sh" override="true" />
+            <executable targetfile="${INSTALL_PATH}/opensc-uninstall.sh" stage="uninstall" failure="ignore" keep="true">
+                <os family="unix" name="debian_linux" />
+                <os family="unix" name="ubuntu_linux" />
+                <os family="unix" name="linux" />
+            </executable>
+        </pack>
+
+        <pack name="OpenJdk win64" required="yes">
+            <os family="windows" />
+            <description>Required ressources</description>
+            <fileset dir="../jrewin" targetdir="${INSTALL_PATH}/java/win" />
+            <singlefile src="icon/esupdssclient.ico"
+                        target="${INSTALL_PATH}/icon/esupdssclient.ico" />
+        </pack>
+
+        <pack name="Esup DSS Client" required="yes">
+            <description>Esup DSS Client</description>
+            <fileset dir="@{izpack.staging}" override="true" />
+        </pack>
+
+        <pack name="OpenJdk linux" required="yes">
+            <os family="unix" name="debian_linux" />
+            <os family="unix" name="ubuntu_linux" />
+            <os family="unix" name="linux" />
+            <description>Required ressources</description>
+            <fileset dir="../jrelinux" targetdir="${INSTALL_PATH}/java/linux" />
+        </pack>
+
+        <pack name="Install OpenSC $opensc.version win64" required="yes">
+            <os family="windows" />
+            <description>Install OpenSC win64 $opensc.version</description>
+            <file targetdir="${INSTALL_PATH}" src="OpenSC-$opensc.version_win64.msi" />
+            <executable targetfile="msiexec.exe" stage="postinstall" failure ="warn" keep="true">
+                <args>
+                    <arg value="\/i"/>
+                    <arg value="${INSTALL_PATH}/OpenSC-$opensc.version_win64.msi"/>
+                    <arg value="\/qn"/>
+                </args>
+                <os family="windows" />
+            </executable>
+        </pack>
+
+        <pack name="Install OpenSC $opensc.version linux" required="yes">
+            <os family="unix" name="debian_linux" />
+            <os family="unix" name="ubuntu_linux" />
+            <os family="unix" name="linux" />
+            <description>Install OpenSC Linux $opensc.version</description>
+            <file targetdir="${INSTALL_PATH}" src="opensc.sh" override="true"/>
+            <parsable targetfile="${INSTALL_PATH}/opensc.sh" type="shell"/>
+            <executable targetfile="${INSTALL_PATH}/opensc.sh" stage="postinstall" keep="true" failure="abort">
+                <os family="unix" name="debian_linux" />
+                <os family="unix" name="ubuntu_linux" />
+                <os family="unix" name="linux" />
+            </executable>
+        </pack>
+
+        <pack name="Create launcher for linux" required="yes">
+            <os family="unix" name="debian_linux" />
+            <os family="unix" name="ubuntu_linux" />
+            <os family="unix" name="linux" />
+            <description>Create launcher for Linux</description>
+            <file targetdir="${INSTALL_PATH}" src="launch-esup-dss-client.sh" override="true" />
+            <executable targetfile="${INSTALL_PATH}/launch-esup-dss-client.sh" stage="never" keep="true" failure="abort">
+                <os family="unix" name="debian_linux" />
+                <os family="unix" name="ubuntu_linux" />
+                <os family="unix" name="linux" />
+            </executable>
+            <parsable targetfile="${INSTALL_PATH}/launch-esup-dss-client.sh" type="shell"/>
+
+        </pack>
+
+    </packs>
+
+</izpack:installation>

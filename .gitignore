@@ -1,0 +1,8 @@
+*
+!.gitignore
+!src/
+!src/**
+src/installers
+!LICENSE
+!README.md
+!pom.xml
