@@ -1,4 +1,4 @@
-[ESUP-DSS-CLIENT](https://github.com/EsupPortail/esup-dss-client/raw/master/src/main/resources/images/logo.jpg)
+![ESUP-DSS-CLIENT](https://github.com/EsupPortail/esup-dss-client/raw/master/src/main/resources/images/logo.jpg)
 
 ### Esup-DSS-Client
 
