@@ -75,7 +75,6 @@ public class APIBuilder {
 			if (key.startsWith("plugin_")) {
 				final String pluginClassName = properties.getProperty(key);
 				final String pluginId = key.substring("plugin_".length());
-
 				logger.info(" + Plugin " + pluginClassName);
 				messages.addAll(buildAndRegisterPlugin((InternalAPI) api, pluginClassName, pluginId));
 			}

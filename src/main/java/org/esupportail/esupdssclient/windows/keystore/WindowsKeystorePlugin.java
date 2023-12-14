@@ -20,6 +20,7 @@ import org.esupportail.esupdssclient.api.plugin.SignaturePlugin;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Plugin that registers Windows Keystore implementation to Esup-DSS-Client.

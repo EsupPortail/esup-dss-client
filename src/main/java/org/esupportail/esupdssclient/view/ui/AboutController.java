@@ -16,40 +16,74 @@ package org.esupportail.esupdssclient.view.ui;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.esupportail.esupdssclient.EsupDSSClientLauncher;
+import org.esupportail.esupdssclient.EsupDSSClientPreLoader;
+import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 
+import java.awt.*;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
 public class AboutController extends AbstractUIOperationController<Void> implements Initializable {
 
 	@FXML
-	private Label aboutTitle;
-	
-	@FXML
 	private Button ok;
 
 	@FXML
 	private Label applicationVersion;
-	
+
+	@FXML
+	private Hyperlink hyperlink;
+
+	@FXML
+	private ImageView logo;
+
 	@FXML
 	private Label dbVersion;
 
 	@FXML
 	private Label dbFile;
 
+	@FXML
+	private Label footer;
+
+	private ResourceBundle resources;
+
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		ok.setOnAction(e -> signalEnd(null));
+		this.resources = resources;
 	}
 
 	@Override
 	public void init(Object... params) {
 		final String applicationName = (String) params[0];
-		this.aboutTitle.setText(aboutTitle.getText() + " " + applicationName);
-		
-		final String applicationVersion = (String) params[1];
-		this.applicationVersion.setText(applicationVersion);
+		StageHelper.getInstance().setTitle("Esup-DSS-Client - " + resources.getString("about.header") + " " + applicationName);
+		InputStream inputStream = EsupDSSClientPreLoader.class.getResourceAsStream("/images/logo.jpg");
+		if(inputStream != null) {
+			this.logo.setImage(new Image(inputStream));
+		}
+        this.applicationVersion.setText(EsupDSSClientLauncher.getProperties().getProperty("display_version"));
+		this.hyperlink.setOnAction(e -> {
+			try {
+				Desktop.getDesktop().browse(new URI(hyperlink.getText()));
+			} catch (IOException | URISyntaxException e1) {
+				e1.printStackTrace();
+			}
+		});
 	}
+
 }

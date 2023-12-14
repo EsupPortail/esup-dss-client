@@ -36,6 +36,7 @@ import static org.apache.commons.lang.StringUtils.isNotEmpty;
  */
 public class AppConfig {
 
+    private static final String DISPLAY_VERSION = "display_version";
     private static final String ADVANCED_MODE_AVAILABLE = "advanced_mode_available";
     private static final String APPLICATION_NAME = "application_name";
     private static final String DEBUG = "debug";
@@ -107,6 +108,8 @@ public class AppConfig {
 
     private boolean sendAnonymousInfoToProxy;
 
+    private String driver;
+    private String certId;
     private boolean useSystemProxy;
     private String proxyServer;
     private Integer proxyPort;
@@ -256,6 +259,22 @@ public class AppConfig {
 
     public void setSendAnonymousInfoToProxy(final boolean sendAnonymousInfoToProxy) {
         this.sendAnonymousInfoToProxy = sendAnonymousInfoToProxy;
+    }
+
+    public String getDriver() {
+        return driver;
+    }
+
+    public void setDriver(String driver) {
+        this.driver = driver;
+    }
+
+    public String getCertId() {
+        return certId;
+    }
+
+    public void setCertId(String certId) {
+        this.certId = certId;
     }
 
     public boolean isUseSystemProxy() {

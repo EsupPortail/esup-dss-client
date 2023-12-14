@@ -2,10 +2,10 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.esupportail</groupId>
 	<artifactId>esupdssclient</artifactId>
-	<version>1.0</version>
+	<version>1.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Esup-DSS-Client</name>
-	<description>DSS Client, Multi-browser, multi-platform, OpenSC remote signature tool.</description>
+	<description>Multi-browser, multi-platform, OpenSC remote signature tool.</description>
 	<organization>
 		<name>Consortium ESUP-Portail</name>
 	</organization>
@@ -55,10 +55,10 @@
 		<openjfx.version>17</openjfx.version>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
-		<opensc.version>0.23.0</opensc.version>
+		<opensc.version>0.24.0</opensc.version>
 		<izpack.version>5.1.3</izpack.version>
 		<izpack.staging>${project.build.directory}/staging</izpack.staging>
-		<macbundle.path>${project.build.directory}/mac-bundle</macbundle.path>
+		<macbundle.path>${project.build.directory}/esup-dss-client.app</macbundle.path>
 		<jdk.zulu.version>17.40.19-ca-fx-jre17.0.6</jdk.zulu.version>
 	</properties>
 
@@ -75,13 +75,6 @@
 			<artifactId>jaxb-api</artifactId>
 			<version>2.3.1</version>
 		</dependency>
-
-<!--		<dependency>-->
-<!--			<groupId>org.glassfish.jaxb</groupId>-->
-<!--			<artifactId>jaxb-runtime</artifactId>-->
-<!--			<version>2.3.8</version>-->
-<!--		</dependency>-->
-
 		<dependency>
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-controls</artifactId>
@@ -173,13 +166,13 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.12</version>
+			<version>4.13.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.5.1</version>
+			<version>4.5.13</version>
 			<exclusions>
 				<exclusion>
 					<artifactId>commons-logging</artifactId>
@@ -417,7 +410,7 @@
 						</configuration>
 					</execution>
 					<execution>
-						<id>create-mac-bundle-staging-area</id>
+						<id>create-esup-dss-client-staging-area</id>
 						<phase>validate</phase>
 						<goals>
 							<goal>run</goal>
@@ -425,7 +418,7 @@
 						<configuration>
 							<target if="mac.os">
 								<copy todir="${macbundle.path}">
-									<fileset dir="${basedir}/src/mac-bundle"/>
+									<fileset dir="${basedir}/src/esup-dss-client.app"/>
 								</copy>
 							</target>
 						</configuration>
@@ -437,6 +430,9 @@
 							<target>
 								<replace file="${izpack.staging}/install.xml" token="$opensc.version" value="${opensc.version}" />
 								<replace file="${izpack.staging}/opensc.sh" token="$opensc.version" value="${opensc.version}" />
+								<replace file="${izpack.staging}/launch-esup-dss-client.sh" token="$jdk.zulu.version" value="${jdk.zulu.version}" />
+								<replace file="${izpack.staging}/default_registry_spec.xml" token="$jdk.zulu.version" value="${jdk.zulu.version}" />
+								<replace file="${izpack.staging}/default_shortcut_spec.xml" token="$jdk.zulu.version" value="${jdk.zulu.version}" />
 							</target>
 						</configuration>
 						<goals>
@@ -445,11 +441,11 @@
 					</execution>
 					<execution>
 						<id>replace-versions-mac</id>
-						<phase>validate</phase>
+						<phase>package</phase>
 						<configuration>
 							<target if="mac.os">
-								<replace file="${macbundle.path}/pkg.sh" token="$macbundle.path" value="${macbundle.path}" />
-								<replace file="${macbundle.path}/opensc_mac.sh" token="$opensc.version" value="${opensc.version}" />
+								<replace file="${izpack.staging}/pkg.sh" token="$macbundle.path" value="${project.build.directory}" />
+								<replace file="${macbundle.path}/Contents/scripts/opensc_mac.sh" token="$opensc.version" value="${opensc.version}" />
 							</target>
 						</configuration>
 						<goals>
@@ -458,11 +454,11 @@
 					</execution>
 					<execution>
 						<id>download-required-dependencies-mac</id>
-						<phase>verify</phase>
+						<phase>validate</phase>
 						<configuration>
 							<target if="mac.os">
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}.dmg"
-									 dest="${macbundle.path}/OpenSC.dmg"/>
+									 dest="${macbundle.path}/Contents/Resources/OpenSC.dmg"/>
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-macosx_x64.zip"
 									 dest="${basedir}/openjdk-mac.zip" />
 							</target>
@@ -479,7 +475,7 @@
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}_win64.msi"
 									 dest="${izpack.staging}/OpenSC-${opensc.version}_win64.msi" />
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/opensc-${opensc.version}.tar.gz"
-									 dest="${izpack.staging}/opensc-0.23.0.tar.gz" />
+									 dest="${izpack.staging}/opensc-0.24.0.tar.gz" />
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-win_x64.zip"
 									 dest="${basedir}/openjdk-win.zip" />
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-linux_x64.tar.gz"
@@ -492,11 +488,11 @@
 					</execution>
 					<execution>
 						<id>dispatch-dependecies-mac</id>
-						<phase>verify</phase>
+						<phase>validate</phase>
 						<configuration>
 							<target if="mac.os">
 								<unzip src="${basedir}/openjdk-mac.zip" dest="target/jdktempmac" />
-								<move file="${project.build.directory}/jdktempmac/zulu${jdk.zulu.version}-macosx_x64" tofile="${macbundle.path}/jdkmac"/>
+								<move file="${project.build.directory}/jdktempmac/zulu${jdk.zulu.version}-macosx_x64" tofile="${macbundle.path}/Contents/Resources/jdkmac"/>
 								<delete file="${project.build.directory}/openjdk-mac.zip"/>
 								<delete dir="${project.build.directory}/jdktempmac"/>
 							</target>
@@ -533,16 +529,16 @@
 						</goals>
 					</execution>
 					<execution>
-						<id>build-mac-bundle</id>
+						<id>build-esup-dss-client-pkg</id>
 						<phase>package</phase>
 						<goals>
 							<goal>run</goal>
 						</goals>
 						<configuration>
 							<target if="mac.os">
-								<chmod file="${macbundle.path}/*" perm="+x" type="both"/>
-								<copy file="${project.build.directory}/esup-dss-client-jar-with-dependencies.jar" tofile="${macbundle.path}/esup-dss-client.jar"/>
-								<exec executable="${macbundle.path}/pkg.sh"></exec>
+								<chmod file="${izpack.staging}/pkg.sh" perm="+x" type="both"/>
+								<copy file="${project.build.directory}/esup-dss-client-jar-with-dependencies.jar" tofile="${macbundle.path}/Contents/Resources/esup-dss-client.jar"/>
+								<exec executable="${izpack.staging}/pkg.sh"/>
 							</target>
 						</configuration>
 					</execution>
@@ -640,12 +636,12 @@
 								<path>./jrewin/zulu${jdk.zulu.version}-win_x64</path>
 							</jre>
 							<versionInfo>
-								<fileVersion>1.0.0.0</fileVersion>
+								<fileVersion>1.1.0.0</fileVersion>
 								<txtFileVersion>${project.version}</txtFileVersion>
 								<fileDescription>${project.name}</fileDescription>
-								<productVersion>1.0.0.0</productVersion>
-								<txtProductVersion>1.0.0.0</txtProductVersion>
-								<txtProductVersion>1.0.0.0</txtProductVersion>
+								<productVersion>1.1.0.0</productVersion>
+								<txtProductVersion>1.1.0.0</txtProductVersion>
+								<txtProductVersion>1.1.0.0</txtProductVersion>
 								<copyright>C</copyright>
 								<productName>${project.name}</productName>
 								<internalName>org.esupportail.esupdssclient</internalName>

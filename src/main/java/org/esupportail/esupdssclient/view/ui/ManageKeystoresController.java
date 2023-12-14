@@ -24,6 +24,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import org.esupportail.esupdssclient.api.ConfiguredKeystore;
 import org.esupportail.esupdssclient.api.KeystoreType;
+import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.keystore.KeystoreDatabase;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 
@@ -63,6 +64,7 @@ public class ManageKeystoresController extends AbstractUIOperationController<Voi
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
+		StageHelper.getInstance().setTitle("Esup-DSS-Client - " + resources.getString("configure.keystore.filename"));
 		keystoresTable.setPlaceholder(new Label(resources.getString("table.view.no.content")));
 		keystoresTable.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 		keystoreNameTableColumn.setCellValueFactory((param) -> {

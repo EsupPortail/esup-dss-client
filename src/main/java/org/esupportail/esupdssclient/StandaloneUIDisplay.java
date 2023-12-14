@@ -15,10 +15,14 @@ package org.esupportail.esupdssclient;
 
 import eu.europa.esig.dss.token.PasswordInputCallback;
 import javafx.application.Platform;
+import javafx.event.EventHandler;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.FileChooser;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import org.esupportail.esupdssclient.api.EsupDSSClientPasswordInputCallback;
 import org.esupportail.esupdssclient.api.MessageDisplayCallback;
 import org.esupportail.esupdssclient.api.flow.BasicOperationStatus;
@@ -32,6 +36,7 @@ import org.esupportail.esupdssclient.view.core.UIOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.File;
 import java.util.ResourceBundle;
 
@@ -73,6 +78,25 @@ public class StandaloneUIDisplay implements UIDisplay {
 			scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
 			stage.setScene(scene);
 			stage.setTitle(StageHelper.getInstance().getTitle());
+			Stage finalStage = stage;
+			stage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
+				@Override
+				public void handle(WindowEvent event) {
+					Screen currentScreen = Screen.getPrimary();
+					PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+					int mouseX = (int) pointerInfo.getLocation().getX();
+					int mouseY = (int) pointerInfo.getLocation().getY();
+					for (Screen screen : Screen.getScreens()) {
+						Rectangle2D bounds = screen.getBounds();
+						if (bounds.contains(mouseX, mouseY)) {
+							currentScreen = screen;
+						}
+					}
+					Rectangle2D screenBounds = currentScreen.getVisualBounds();
+					finalStage.setX(((screenBounds.getWidth() - finalStage.getWidth()) / 2) + screenBounds.getMinX());
+					finalStage.setY((screenBounds.getHeight() - finalStage.getHeight()) / 2);
+				}
+			});
 			stage.show();
 			StageHelper.getInstance().setTitle("", null);
 		});

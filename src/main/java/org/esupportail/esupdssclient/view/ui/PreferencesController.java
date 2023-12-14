@@ -18,14 +18,20 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import org.apache.commons.lang.StringUtils;
+import org.esupportail.esupdssclient.EsupDSSClientApplication;
 import org.esupportail.esupdssclient.EsupDSSClientLauncher;
-import org.esupportail.esupdssclient.ProxyConfigurer;
+import org.esupportail.esupdssclient.GlobalConfigurer;
 import org.esupportail.esupdssclient.UserPreferences;
 import org.esupportail.esupdssclient.api.EnvironmentInfo;
 import org.esupportail.esupdssclient.api.OS;
+import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.util.Properties;
 import java.util.ResourceBundle;
 
 public class PreferencesController extends AbstractUIOperationController<Void> implements Initializable {
@@ -38,12 +44,21 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 
 	@FXML
 	private Button reset;
-	
+
+	@FXML
+	private Label title;
+
 	@FXML
 	private Label useSystemProxyLabel;
 	
 	@FXML
 	private CheckBox useSystemProxy;
+
+	@FXML
+	private TextField driver;
+
+	@FXML
+	private TextField certId;
 
 	@FXML
 	private TextField proxyServer;
@@ -66,6 +81,8 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 	private UserPreferences userPreferences;
 	
 	private BooleanProperty readOnly;
+
+	private Properties props;
 	
 	private static final boolean isWindows;
 	
@@ -73,7 +90,8 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 		isWindows = EnvironmentInfo.buildFromSystemProperties(System.getProperties()).getOs().equals(OS.WINDOWS);
 	}
 	
-	private void init(final ProxyConfigurer proxyConfigurer) {
+	private void init(final GlobalConfigurer proxyConfigurer) {
+		StageHelper.getInstance().setTitle("Esup-DSS-Client - " + title.getText());
 		if(isWindows) {
 			useSystemProxy.setSelected(proxyConfigurer.isUseSystemProxy());
 		} else {
@@ -82,7 +100,8 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 			useSystemProxyLabel.setVisible(false);
 			useSystemProxyLabel.setManaged(false);
 		}
-		
+		driver.setText(proxyConfigurer.getDriver());
+		certId.setText(proxyConfigurer.getCertId());
 		useHttps.setSelected(proxyConfigurer.isProxyUseHttps());
 		proxyServer.setText(proxyConfigurer.getProxyServer());
 		final Integer proxyPortInt = proxyConfigurer.getProxyPort();
@@ -94,6 +113,7 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
+		props =  loadPropertiesFromClasspath();
 		readOnly = new SimpleBooleanProperty(false);
 		ok.disableProperty().bind(readOnly);
 		reset.disableProperty().bind(readOnly);
@@ -136,7 +156,22 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 				proxyPort.setStyle("-fx-text-box-border: red; -fx-focus-color: red;");
 	    		return;
 			}
-			
+			userPreferences.setDriver(driver.getText());
+			if(StringUtils.isNotBlank(userPreferences.getDriver())) {
+				EsupDSSClientLauncher.getProperties().setProperty("opensc_command_module", userPreferences.getDriver());
+			} else {
+				String module = "";
+				if(StringUtils.isNotBlank(props.getProperty("opensc_command_module"))) module = props.getProperty("opensc_command_module");
+				EsupDSSClientLauncher.getProperties().setProperty("opensc_command_module", module);
+			}
+			userPreferences.setCertId(certId.getText());
+			if(StringUtils.isNotBlank(userPreferences.getCertId())) {
+				EsupDSSClientLauncher.getProperties().setProperty("opensc_command_cert_id", userPreferences.getCertId());
+			} else {
+				String certId = "";
+				if(StringUtils.isNotBlank(props.getProperty("opensc_command_cert_id"))) certId = props.getProperty("opensc_command_cert_id");
+				EsupDSSClientLauncher.getProperties().setProperty("opensc_command_cert_id", certId);
+			}
 			userPreferences.setUseSystemProxy(useSystemProxy.isDisabled() ? null : useSystemProxy.isSelected());
 			userPreferences.setProxyServer(proxyServer.isDisabled() ? null : proxyServer.getText());
 			userPreferences.setProxyPort(port);
@@ -145,7 +180,7 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 			userPreferences.setProxyPassword(proxyPassword.isDisabled() ? null : proxyPassword.getText());
 			userPreferences.setProxyUseHttps(useHttps.isDisabled() ? null : useHttps.isSelected());
 			
-			EsupDSSClientLauncher.getProxyConfigurer().updateValues(EsupDSSClientLauncher.getConfig(), userPreferences);
+			EsupDSSClientLauncher.getGlobalConfigurer().updateValues(EsupDSSClientLauncher.getConfig(), userPreferences);
 
 			signalEnd(null);
 		});
@@ -154,16 +189,29 @@ public class PreferencesController extends AbstractUIOperationController<Void> i
 		});
 		reset.setOnAction((e) -> {
 			userPreferences.clear();
-			EsupDSSClientLauncher.getProxyConfigurer().updateValues(EsupDSSClientLauncher.getConfig(), userPreferences);
+			EsupDSSClientLauncher.getGlobalConfigurer().updateValues(EsupDSSClientLauncher.getConfig(), userPreferences);
 			signalEnd(null);
 		});
 	}
 
 	@Override
 	public void init(Object... params) {
-		final ProxyConfigurer proxyConfigurer = (ProxyConfigurer) params[0];
+		final GlobalConfigurer proxyConfigurer = (GlobalConfigurer) params[0];
 		init(proxyConfigurer);
 		this.userPreferences = (UserPreferences) params[1];
 		this.readOnly.set((boolean) params[2]);
+	}
+
+	private Properties loadPropertiesFromClasspath() {
+		Properties props = new Properties();
+		InputStream configFile = EsupDSSClientApplication.class.getClassLoader().getResourceAsStream("application.properties");
+		if (configFile != null) {
+            try {
+                props.load(configFile);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+		return props;
 	}
 }

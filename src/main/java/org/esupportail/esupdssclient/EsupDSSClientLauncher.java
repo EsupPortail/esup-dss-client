@@ -16,6 +16,7 @@ package org.esupportail.esupdssclient;
 import com.sun.javafx.application.LauncherImpl;
 import javafx.application.Application;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,7 @@ public class EsupDSSClientLauncher {
 
 	private static Properties props;
 
-	private static ProxyConfigurer proxyConfigurer;
+	private static GlobalConfigurer globalConfigurer;
 
 	public static void main(String[] args) throws Exception {
 		EsupDSSClientLauncher launcher = new EsupDSSClientLauncher();
@@ -49,8 +50,10 @@ public class EsupDSSClientLauncher {
 
 		config.initDefaultProduct(props);
 
-		proxyConfigurer = new ProxyConfigurer(config, new UserPreferences(config.getApplicationName()));
-
+		globalConfigurer = new GlobalConfigurer(config, new UserPreferences(config.getApplicationName()));
+		if(StringUtils.isNotBlank(globalConfigurer.getDriver())) {
+			props.setProperty("opensc_command_module", globalConfigurer.getDriver());
+		}
 		boolean started = checkAlreadyStarted();
 		if (!started) {
 			LauncherImpl.launchApplication(getApplicationClass(), EsupDSSClientPreLoader.class, args);
@@ -65,8 +68,8 @@ public class EsupDSSClientLauncher {
 		return props;
 	}
 
-	public static ProxyConfigurer getProxyConfigurer() {
-		return proxyConfigurer;
+	public static GlobalConfigurer getGlobalConfigurer() {
+		return globalConfigurer;
 	}
 
 	private static boolean checkAlreadyStarted() throws MalformedURLException {

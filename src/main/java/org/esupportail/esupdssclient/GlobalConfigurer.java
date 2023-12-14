@@ -32,10 +32,11 @@ import org.esupportail.esupdssclient.windows.WindowsRegistry;
  *
  * @author Jean Lepropre (jean.lepropre@nowina.lu)
  */
-public class ProxyConfigurer {
+public class GlobalConfigurer {
 	
 	private static final boolean isWindows;
-	
+	private String driver;
+	private String certId;
 	private boolean useSystemProxy;
 	private String proxyServer;
 	private Integer proxyPort;
@@ -48,11 +49,13 @@ public class ProxyConfigurer {
 		isWindows = EnvironmentInfo.buildFromSystemProperties(System.getProperties()).getOs().equals(OS.WINDOWS);
 	}
 	
-	public ProxyConfigurer(final AppConfig config, final UserPreferences preferences) {
+	public GlobalConfigurer(final AppConfig config, final UserPreferences preferences) {
 		updateValues(config, preferences);
 	}
 	
 	public void updateValues(final AppConfig config, final UserPreferences preferences) {
+		driver = (preferences.getDriver() != null) ? preferences.getDriver() : config.getDriver();
+		certId = (preferences.getCertId() != null) ? preferences.getCertId() : config.getCertId();
 		useSystemProxy = (preferences.isUseSystemProxy() != null) ? preferences.isUseSystemProxy() : config.isUseSystemProxy();
 		proxyServer = (preferences.getProxyServer() != null) ? preferences.getProxyServer() : config.getProxyServer();
 		proxyPort = (preferences.getProxyPort() != null) ? preferences.getProxyPort() : config.getProxyPort();
@@ -60,6 +63,14 @@ public class ProxyConfigurer {
 		proxyAuthentication = (preferences.isProxyAuthentication() != null) ? preferences.isProxyAuthentication() : config.isProxyAuthentication();
 		proxyUsername = (preferences.getProxyUsername() != null) ? preferences.getProxyUsername() : config.getProxyUsername();
 		proxyPassword = (preferences.getProxyPassword() != null) ? preferences.getProxyPassword() : config.getProxyPassword();
+	}
+
+	public String getDriver() {
+		return driver;
+	}
+
+	public String getCertId() {
+		return certId;
 	}
 
 	public boolean isUseSystemProxy() {

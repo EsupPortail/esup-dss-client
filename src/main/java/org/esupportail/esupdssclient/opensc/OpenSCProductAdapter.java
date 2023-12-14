@@ -30,6 +30,7 @@ import org.esupportail.esupdssclient.api.flow.NoOpFutureOperationInvocation;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Product adapter for {@link OpenSC}.
@@ -137,7 +138,7 @@ public class OpenSCProductAdapter implements ProductAdapter {
 		public OpenSCTokenProxy(PasswordInputCallback callback) {
 			super();
 			this.callback = callback;
-		}
+        }
 
 		private void initSignatureTokenConnection() {
 			proxied = new OpenSCSignatureToken(null);

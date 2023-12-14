@@ -38,7 +38,11 @@ public class StageHelper {
 	public String getTitle() {
 		return title;
 	}
-	
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
 	public void setTitle(final String applicationName, final String resourceBundleKey) {
 		if(isBlank(applicationName) && isBlank(resourceBundleKey)) {
 			title = "";

@@ -115,7 +115,7 @@ public class SystrayMenu {
 				return new FutureOperationInvocation<Void>() {
 					@Override
 					public OperationResult<Void> call(OperationFactory operationFactory) {
-						final ProxyConfigurer proxyConfigurer = new ProxyConfigurer(api.getAppConfig(), prefs);
+						final GlobalConfigurer proxyConfigurer = new GlobalConfigurer(api.getAppConfig(), prefs);
 
 						return operationFactory.getOperation(NonBlockingUIOperation.class, "/fxml/preferences.fxml",
 								proxyConfigurer, prefs, !api.getAppConfig().isUserPreferencesEditable()).perform();

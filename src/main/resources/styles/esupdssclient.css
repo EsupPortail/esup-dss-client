@@ -39,15 +39,15 @@ RadioButton {
 }
 
 .message {
-	
+
     -fx-font-size: 14px;
     -fx-padding: 15 15 15 15;
-		
 }
 
-.aboutTitle {
-	-fx-margin: 5px;
-	-fx-font-weight: bold;
+.title {
+    -fx-alignment: center;
+    -fx-font-size: 20px;
+    -fx-padding: 15 15 15 15;
 }
 
 .form-container {
@@ -65,29 +65,58 @@ RadioButton {
 	
 }
 
+.btn-success {
+
+    -fx-background-color: #198754;
+    -fx-text-fill: white;
+    -fx-border-color: rgba(255, 255, 255, 0);
+
+}
+
+.btn-success:hover {
+
+    -fx-background-color: #157347;
+
+}
+
 .btn-primary {
 
-    -fx-background-color: #004583;
+    -fx-background-color: #0d6efd;
     -fx-text-fill: white;
+    -fx-border-color: rgba(255, 255, 255, 0);
 
 }
 
 .btn-primary:hover {
 
-    -fx-border-color:yellow;
+    -fx-background-color: #0a58ca;
+
+}
+
+.btn-secondary {
+
+    -fx-background-color: #6c757d;
+    -fx-text-fill: white;
+    -fx-border-color: rgba(255, 255, 255, 0);
+
+}
+
+.btn-secondary:hover {
+
+    -fx-background-color: #51585e;
 
 }
 
 .btn-danger {
 
-    -fx-background-color: #ef2e14;
+    -fx-background-color: #dc3545;
     -fx-text-fill: white;
+    -fx-border-color: rgba(255, 255, 255, 0);
 
 }
 
 .btn-danger:hover {
-    
-    -fx-border-color:yellow;
+    -fx-background-color: #a52834;
 
 }
 

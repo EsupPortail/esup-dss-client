@@ -17,7 +17,7 @@
         <value name="UninstallString"
                keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
                root="HKLM"
-               string="&quot;$INSTALL_PATH\java\win\zulu@jdk.zulu.version@-win_x64\bin\javaw.exe&quot; -jar &quot;$INSTALL_PATH\uninstaller\uninstaller.jar&quot;"/>
+               string="&quot;$INSTALL_PATH\java\win\zulu$jdk.zulu.version-win_x64\bin\javaw.exe&quot; -jar &quot;$INSTALL_PATH\uninstaller\uninstaller.jar&quot;"/>
         <value name="DisplayIcon"
                keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
                root="HKLM"
@@ -29,7 +29,7 @@
         <value name="Publisher"
                keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
                root="HKLM"
-               string="Consortium ESUP-Portail"/>
+               string="Consortium Esup"/>
         <value name="InstallLocation"
                keypath="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Esup DSS Client"
                root="HKLM"

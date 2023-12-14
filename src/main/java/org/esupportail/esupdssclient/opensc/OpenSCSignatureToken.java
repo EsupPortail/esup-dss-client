@@ -12,8 +12,11 @@ import eu.europa.esig.dss.model.x509.CertificateToken;
 import eu.europa.esig.dss.spi.DSSUtils;
 import eu.europa.esig.dss.token.DSSPrivateKeyEntry;
 import eu.europa.esig.dss.token.SignatureTokenConnection;
+import eu.europa.esig.dss.token.SunPKCS11Initializer;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
+import org.esupportail.esupdssclient.EsupDSSClientLauncher;
 import org.esupportail.esupdssclient.api.OpenSC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +25,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.cert.CertificateEncodingException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.text.MessageFormat;
+import java.util.*;
 
 /**
  * Product adapter for {@link OpenSC}.
@@ -37,9 +38,13 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
     private static final Logger LOG = LoggerFactory.getLogger(OpenSCSignatureToken.class);
     private final KeyStore.PasswordProtection passwordProtection;
     private static final int DEFAULT_BUFFER_SIZE = 8192;
+        private String module = "";
 
     public OpenSCSignatureToken(KeyStore.PasswordProtection passwordProtection) {
         this.passwordProtection = passwordProtection;
+            if(StringUtils.isNotBlank(EsupDSSClientLauncher.getProperties().getProperty("opensc_command_module"))) {
+            this.module += " --module " + EsupDSSClientLauncher.getProperties().getProperty("opensc_command_module");
+        }
     }
 
     @Override
@@ -65,7 +70,8 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
             File toSignFile = new File(tmpDir + "/toSign");
             FileUtils.copyInputStreamToFile(inputStream, toSignFile);
             File signedFile = new File(tmpDir + "/signed");
-            launchProcess("pkcs11-tool --sign -v -p " + password + " --id 0001 --mechanism SHA256-RSA-PKCS --input-file " + toSignFile.getAbsolutePath() + " --output-file " + signedFile.getAbsolutePath());
+            String command = MessageFormat.format(EsupDSSClientLauncher.getProperties().getProperty("opensc_command_sign"), getId(), password, toSignFile.getAbsolutePath(), signedFile.getAbsolutePath());
+            launchProcess(command + module);
             SignatureValue value = new SignatureValue();
             value.setAlgorithm(signatureAlgorithm);
             value.setValue(FileUtils.readFileToByteArray(signedFile));
@@ -112,7 +118,8 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
     }
 
     public DSSPrivateKeyEntry getKey() throws DSSException {
-        byte[] cert = launchProcess("pkcs11-tool -r --id 0001 --type cert");
+        String command = MessageFormat.format(EsupDSSClientLauncher.getProperties().getProperty("opensc_command_get_key"), getId());
+        byte[] cert = launchProcess(command + module);
         CertificateToken certificateToken = DSSUtils.loadCertificate(cert);
         try {
             return new OpenSCPrivateKeyEntry(certificateToken.getCertificate().getEncoded());
@@ -121,16 +128,38 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
         }
     }
 
+    public String getId() {
+        String id = EsupDSSClientLauncher.getProperties().getProperty("opensc_command_cert_id");
+        if(StringUtils.isBlank(id)) {
+            byte[] ids = launchProcess(EsupDSSClientLauncher.getProperties().getProperty("opensc_command_get_id") + module);
+            String[] lines = new String(ids).split("\n");
+            if (lines.length > 0) {
+                String lineWithID = "";
+                for (String line : lines) {
+                    if (line.contains("ID:")) {
+                        lineWithID = line;
+                        break;
+                    }
+                }
+                if (lineWithID.split(":").length > 1) {
+                    id = lineWithID.split(":")[1].trim();
+                }
+            } else {
+                throw new DSSException("No ID found");
+            }
+        }
+        return id;
+    }
+
     public byte[] launchProcess(String command) throws DSSException {
         try {
             ProcessBuilder processBuilder = new ProcessBuilder();
             if(SystemUtils.IS_OS_WINDOWS) {
                 processBuilder.command("cmd", "/C", command);
                 Map<String, String> envs = processBuilder.environment();
-                System.out.println(envs.get("Path"));
-                envs.put("Path", "C:\\Program Files\\OpenSC Project\\OpenSC\\tools");
+                envs.put("Path", EsupDSSClientLauncher.getProperties().getProperty("opensc_path_windows"));
             } else {
-                processBuilder.command("bash", "-c", command);
+                processBuilder.command("bash", "-c", EsupDSSClientLauncher.getProperties().getProperty("opensc_path_linux") + command);
             }
             Process process = processBuilder.start();
             int exitVal = process.waitFor();

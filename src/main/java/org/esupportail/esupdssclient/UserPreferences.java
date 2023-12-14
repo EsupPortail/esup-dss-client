@@ -18,6 +18,8 @@ import java.util.prefs.Preferences;
 
 public class UserPreferences {
 
+	private static final String DRIVER = "org.esupportail.esupdssclient.driver";
+	private static final String CERT_ID = "org.esupportail.esupdssclient.certId";
 	private static final String USE_SYSTEM_PROXY = "org.esupportail.esupdssclient.useSystemProxy";
 	private static final String PROXY_SERVER = "org.esupportail.esupdssclient.proxyServer";
 	private static final String PROXY_PORT = "org.esupportail.esupdssclient.proxyPort";
@@ -28,6 +30,8 @@ public class UserPreferences {
 
 	private final Preferences prefs;
 
+	private String driver;
+	private String certId;
 	private Boolean useSystemProxy;
 	private String proxyServer;
 	private Integer proxyPort;
@@ -38,7 +42,11 @@ public class UserPreferences {
 
 	public UserPreferences(final String applicationName) {
 		prefs = Preferences.userRoot().node(applicationName);
-		
+
+		driver = prefs.get(DRIVER, null);
+
+		certId = prefs.get(CERT_ID, null);
+
 		final String useSystemProxyStr = prefs.get(USE_SYSTEM_PROXY, null);
 		useSystemProxy = (useSystemProxyStr != null) ? Boolean.valueOf(useSystemProxyStr) : null;
 		
@@ -55,6 +63,24 @@ public class UserPreferences {
 		
 		proxyUsername = prefs.get(PROXY_USERNAME, null);
 		proxyPassword = prefs.get(PROXY_PASSWORD, null);
+	}
+
+	public void setDriver(String driver) {
+		if(driver != null) {
+			prefs.put(DRIVER, driver);
+		} else {
+			prefs.remove(DRIVER);
+		}
+		this.driver = driver;
+	}
+
+	public void setCertId(String certId) {
+		if(certId != null) {
+			prefs.put(CERT_ID, certId);
+		} else {
+			prefs.remove(CERT_ID);
+		}
+		this.certId = certId;
 	}
 
 	public void setUseSystemProxy(Boolean useSystemProxy) {
@@ -119,7 +145,15 @@ public class UserPreferences {
 		}
 		this.proxyPassword = proxyPassword;
 	}
-	
+
+	public String getDriver() {
+		return driver;
+	}
+
+	public String getCertId() {
+		return certId;
+	}
+
 	public Boolean isUseSystemProxy() {
 		return useSystemProxy;
 	}

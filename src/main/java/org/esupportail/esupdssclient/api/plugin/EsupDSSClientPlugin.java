@@ -16,6 +16,7 @@ package org.esupportail.esupdssclient.api.plugin;
 import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Interface for a plugin

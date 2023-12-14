@@ -14,46 +14,75 @@
  Consultez la Licence pour les autorisations et les restrictions linguistiques spécifiques relevant de la Licence.
 -->
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<BorderPane minHeight="350.0" minWidth="300" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.esupportail.esupdssclient.view.ui.PreferencesController">
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+
+<BorderPane minHeight="400.0" minWidth="600" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.esupportail.esupdssclient.view.ui.PreferencesController">
 
 	<top>
-		<GridPane alignment="CENTER" styleClass="form-container" vgap="5" hgap="10">
+		<GridPane alignment="CENTER" hgap="10" styleClass="form-container" vgap="5">
 			<children>
-				<Label styleClass="message" text="%preferences.header" wrapText="true"
-				  GridPane.columnIndex="0" GridPane.rowIndex="0" GridPane.columnSpan="2" GridPane.rowSpan="1"/>
-				
-                <Label fx:id="useSystemProxyLabel" text="%preferences.systemProxy" GridPane.columnIndex="0" GridPane.rowIndex="1" />
-                <CheckBox id="useSystemProxy" fx:id="useSystemProxy" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+				<Label fx:id="title" minWidth="-Infinity" prefWidth="600.0" styleClass="title" text="%preferences.header" wrapText="true" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.rowSpan="1" />
+
+                <Label fx:id="driverLabel" text="%preferences.driver" GridPane.rowIndex="1" />
+                <TextField fx:id="driver" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                <Label fx:id="certIdLabel" text="%preferences.certId" GridPane.rowIndex="2" />
+                <TextField fx:id="certId" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                <Label fx:id="useSystemProxyLabel" text="%preferences.systemProxy" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                <CheckBox id="useSystemProxy" fx:id="useSystemProxy" GridPane.columnIndex="1" GridPane.rowIndex="3" />
                 
-				<Label text="%preferences.proxyServer" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-				<TextField fx:id="proxyServer" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+				<Label text="%preferences.proxyServer" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+				<TextField fx:id="proxyServer" GridPane.columnIndex="1" GridPane.rowIndex="4" />
 				
-				<Label text="%preferences.proxyPort" GridPane.columnIndex="0" GridPane.rowIndex="3" />
-				<TextField fx:id="proxyPort" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+				<Label text="%preferences.proxyPort" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+				<TextField fx:id="proxyPort" GridPane.columnIndex="1" GridPane.rowIndex="5" />
 				
-				<Label text="%preferences.https" GridPane.columnIndex="0" GridPane.rowIndex="4" />
-                <CheckBox id="useHttps" fx:id="useHttps" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+				<Label text="%preferences.https" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+                <CheckBox id="useHttps" fx:id="useHttps" GridPane.columnIndex="1" GridPane.rowIndex="6" />
 				
-				<Label text="%preferences.authenticationRequired" GridPane.columnIndex="0" GridPane.rowIndex="5" />
-				<CheckBox id="proxyAuthentication" fx:id="proxyAuthentication" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+				<Label text="%preferences.authenticationRequired" GridPane.columnIndex="0" GridPane.rowIndex="7" />
+				<CheckBox id="proxyAuthentication" fx:id="proxyAuthentication" GridPane.columnIndex="1" GridPane.rowIndex="7" />
 				
-				<Label text="%preferences.proxyUsername" GridPane.columnIndex="0" GridPane.rowIndex="6" />
-				<TextField fx:id="proxyUsername" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+				<Label text="%preferences.proxyUsername" GridPane.columnIndex="0" GridPane.rowIndex="8" />
+				<TextField fx:id="proxyUsername" GridPane.columnIndex="1" GridPane.rowIndex="8" />
 				
-				<Label text="%preferences.proxyPassword" GridPane.columnIndex="0" GridPane.rowIndex="7" />
-				<PasswordField fx:id="proxyPassword" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
+				<Label text="%preferences.proxyPassword" GridPane.columnIndex="0" GridPane.rowIndex="9" />
+				<PasswordField fx:id="proxyPassword" GridPane.columnIndex="1" GridPane.rowIndex="9" />
 			</children>
+         <columnConstraints>
+            <ColumnConstraints minWidth="300.0" />
+            <ColumnConstraints minWidth="300.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints />
+            <RowConstraints prefHeight="30.0" />
+            <RowConstraints minHeight="10.0" prefHeight="30.0" />
+            <RowConstraints />
+            <RowConstraints />
+            <RowConstraints />
+            <RowConstraints />
+            <RowConstraints />
+            <RowConstraints />
+            <RowConstraints />
+         </rowConstraints>
 		</GridPane>
 	</top>
 	<bottom>
-        <HBox styleClass="btn-container" BorderPane.alignment="CENTER"
-          GridPane.columnIndex="0" GridPane.rowIndex="8" GridPane.columnSpan="2" GridPane.rowSpan="1">
+        <HBox styleClass="btn-container" BorderPane.alignment="CENTER" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.rowIndex="8" GridPane.rowSpan="1">
             <children>
-                <Button fx:id="ok" mnemonicParsing="false" styleClass="btn-primary" text="%button.ok" />
-                <Button fx:id="cancel" mnemonicParsing="false" styleClass="btn-primary" text="%button.cancel" />
-                <Button fx:id="reset" mnemonicParsing="false" styleClass="btn-primary" text="%button.reset" />
+                <Button fx:id="cancel" mnemonicParsing="false" styleClass="btn-secondary" text="%button.cancel" />
+                <Button fx:id="reset" mnemonicParsing="false" styleClass="btn-danger" text="%button.reset" />
+                <Button fx:id="ok" mnemonicParsing="false" styleClass="btn-success" text="%button.save" />
             </children>
         </HBox>
 	</bottom>

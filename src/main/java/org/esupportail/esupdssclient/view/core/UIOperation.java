@@ -15,6 +15,7 @@ package org.esupportail.esupdssclient.view.core;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import org.esupportail.esupdssclient.api.flow.*;
 import org.esupportail.esupdssclient.flow.Flow;
 import org.esupportail.esupdssclient.flow.operation.UIDisplayAwareOperation;
@@ -82,6 +83,7 @@ public class UIOperation<R> implements UIDisplayAwareOperation<R> {
 	public final OperationResult<R> perform() {
 		logger.info("Loading " + fxml + " view");
 		final FXMLLoader loader = new FXMLLoader();
+
 		try {
 			loader.setResources(ResourceBundle.getBundle("bundles/api"));
 			loader.load(getClass().getResourceAsStream(fxml));

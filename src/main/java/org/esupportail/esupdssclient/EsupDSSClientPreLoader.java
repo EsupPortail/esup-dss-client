@@ -15,19 +15,24 @@ package org.esupportail.esupdssclient;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Preloader;
+import javafx.event.EventHandler;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.ResourceBundle;
@@ -77,6 +82,24 @@ public class EsupDSSClientPreLoader extends Preloader {
 			final Scene splashScene = new Scene(background, 700, 300);
 			primaryStage.setScene(splashScene);
 			primaryStage.initStyle(StageStyle.UNDECORATED);
+            primaryStage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
+				@Override
+				public void handle(WindowEvent event) {
+					Screen currentScreen = Screen.getPrimary();
+					PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+					int mouseX = (int) pointerInfo.getLocation().getX();
+					int mouseY = (int) pointerInfo.getLocation().getY();
+					for (Screen screen : Screen.getScreens()) {
+						Rectangle2D bounds = screen.getBounds();
+						if (bounds.contains(mouseX, mouseY)) {
+							currentScreen = screen;
+						}
+					}
+					Rectangle2D screenBounds = currentScreen.getVisualBounds();
+					primaryStage.setX(((screenBounds.getWidth() - primaryStage.getWidth()) / 2) + screenBounds.getMinX());
+					primaryStage.setY((screenBounds.getHeight() - primaryStage.getHeight()) / 2);
+				}
+			});
 			primaryStage.show();
 			final PauseTransition delay = new PauseTransition(Duration.seconds(3));
 			delay.setOnFinished(event -> primaryStage.close());
