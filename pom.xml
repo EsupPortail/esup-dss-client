@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.esupportail</groupId>
 	<artifactId>esupdssclient</artifactId>
-	<version>1.1-SNAPSHOT</version>
+	<version>1.1</version>
 	<packaging>jar</packaging>
 	<name>Esup-DSS-Client</name>
 	<description>Multi-browser, multi-platform, OpenSC remote signature tool.</description>
