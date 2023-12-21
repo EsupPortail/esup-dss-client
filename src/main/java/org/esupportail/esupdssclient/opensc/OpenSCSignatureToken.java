@@ -14,6 +14,7 @@ import eu.europa.esig.dss.token.DSSPrivateKeyEntry;
 import eu.europa.esig.dss.token.SignatureTokenConnection;
 import eu.europa.esig.dss.token.SunPKCS11Initializer;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.esupportail.esupdssclient.EsupDSSClientLauncher;
@@ -35,10 +36,9 @@ import java.util.*;
  */
 public class OpenSCSignatureToken implements SignatureTokenConnection {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpenSCSignatureToken.class);
+    private static final Logger logger = LoggerFactory.getLogger(OpenSCSignatureToken.class);
     private final KeyStore.PasswordProtection passwordProtection;
-    private static final int DEFAULT_BUFFER_SIZE = 8192;
-        private String module = "";
+    private String module = "";
 
     public OpenSCSignatureToken(KeyStore.PasswordProtection passwordProtection) {
         this.passwordProtection = passwordProtection;
@@ -61,7 +61,7 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
         final EncryptionAlgorithm encryptionAlgo = dssPrivateKeyEntry.getEncryptionAlgorithm();
         final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.getAlgorithm(encryptionAlgo, digestAlgorithm);
 
-        LOG.info("OpenSC>>>Signature algorithm: " + signatureAlgorithm.getJCEId());
+        logger.info("OpenSC>>>Signature algorithm: " + signatureAlgorithm.getJCEId());
         File tmpDir = null;
         try {
             String password = String.valueOf(passwordProtection.getPassword());
@@ -165,39 +165,26 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
             int exitVal = process.waitFor();
             if (exitVal == 0) {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                transferTo(process.getInputStream(), outputStream);
+                IOUtils.copy(process.getInputStream(), outputStream);
                 return outputStream.toByteArray();
             } else {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                transferTo(process.getErrorStream(), outputStream);
+                IOUtils.copy(process.getInputStream(), outputStream);
                 byte[] result = outputStream.toByteArray();
-                LOG.error("OpenSc command fail");
+                logger.error("OpenSc command fail");
                 StringBuilder output = new StringBuilder();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(result)));
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
                 }
-                LOG.error(output.toString());
+                logger.error(output.toString());
                 throw new DSSException(output.toString());
             }
         } catch (InterruptedException | IOException e) {
             throw new DSSException(e);
 
         }
-    }
-
-
-    public long transferTo(InputStream in, OutputStream out) throws IOException {
-        Objects.requireNonNull(out, "out");
-        long transferred = 0;
-        byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
-        int read;
-        while ((read = in.read(buffer, 0, DEFAULT_BUFFER_SIZE)) >= 0) {
-            out.write(buffer, 0, read);
-            transferred += read;
-        }
-        return transferred;
     }
 
 }

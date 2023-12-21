@@ -45,7 +45,7 @@
 		<java.version>17</java.version>
 		<encoding>UTF-8</encoding>
 		<skip.package>false</skip.package>
-		<dss.version>5.12.1</dss.version>
+		<dss.version>5.13</dss.version>
 		<maven.release.plugin.version>2.5.3</maven.release.plugin.version>
 		<slf4j.version>2.0.4</slf4j.version>
 		<jna.version>4.2.2</jna.version>
