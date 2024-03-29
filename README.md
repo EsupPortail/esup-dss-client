@@ -19,13 +19,16 @@ Le code présent dans ce dépôt permet de générer les installaleurs pour les 
 ## Compilation / Obtention des installateurs
 
 ### Sous Linux
+
 En lancant :
 
-mvn clean install
+``` mvn clean install ```
+
 Vous obtenez dans ./target les fichiers :
 
 esup-dss-client-installer.jar pour l'installation sous Linux
 esup-dss-client-win64.zip pour l'installation sous Windows
+
 Pour obtenir le jar seul :
 
 ``` mvn clean package ```
@@ -36,7 +39,8 @@ Pour obtenir l'installateur PKG, il faut être sous macOS. Voici les pre-requis 
 git (et donc les outils Xcode)
 brew (voir https://brew.sh/index_fr)
 maven via brew (brew install maven)
-Modifier le code développeur dans src/izpack/pkg.sh
+
+Modifier le code installateur en cas de signature du package dans src/izpack/pkg.sh
 
 ``` mvn clean package -Dmac.os=true ```
 
