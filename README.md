@@ -1,6 +1,6 @@
 ![ESUP-DSS-CLIENT](https://github.com/EsupPortail/esup-dss-client/raw/master/src/main/resources/images/logo.jpg)
 
-### Esup-DSS-Client
+# Esup-DSS-Client
 
 Esup-DSS-Client est la nouvelle passerelle entre le poste client et DSS Signature (librairie logicielle utilisée par Esup-Signature). Cette application remplace l'utilisation du client NexU qui n'est plus maintenu depuis 2018. 
 Elle peut être utilisée avec l'application Esup-Signature pour effectuer des signatures eIDas (RGS**) : https://www.esup-portail.org/wiki/display/SIGN
@@ -16,6 +16,34 @@ Le code de l’application NexU (sous license EUPL) a été partiellement repris
 
 Le code présent dans ce dépôt permet de générer les installaleurs pour les systèmes d'exploitation Windows, MacOS et Linux
 
-Pour plus d'informations voir : 
+## Compilation / Obtention des installateurs
+
+### Sous Linux
+
+En lancant :
+
+``` mvn clean install ```
+
+Vous obtenez dans ./target les fichiers :
+
+esup-dss-client-installer.jar pour l'installation sous Linux
+esup-dss-client-win64.zip pour l'installation sous Windows
+
+Pour obtenir le jar seul :
+
+``` mvn clean package ```
+
+### Sous MacOS
+Pour obtenir l'installateur PKG, il faut être sous macOS. Voici les pre-requis à installer :
+
+git (et donc les outils Xcode)
+brew (voir https://brew.sh/index_fr)
+maven via brew (brew install maven)
+
+Modifier le code installateur en cas de signature du package dans src/izpack/pkg.sh
+
+``` mvn clean package -Dmac.os=true ```
+
+## Pour plus d'informations voir : 
 
 https://www.esup-portail.org/wiki/display/SIGN/Esup-DSS-Client
