@@ -164,13 +164,10 @@ public class OpenSCSignatureToken implements SignatureTokenConnection {
             Process process = processBuilder.start();
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                IOUtils.copy(process.getInputStream(), outputStream);
-                return outputStream.toByteArray();
+                return process.getInputStream().readAllBytes();
             } else {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                IOUtils.copy(process.getInputStream(), outputStream);
-                byte[] result = outputStream.toByteArray();
+                byte[] result = process.getErrorStream().readAllBytes();
+                if(result.length == 0) result = process.getInputStream().readAllBytes();
                 logger.error("OpenSc command fail");
                 StringBuilder output = new StringBuilder();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(result)));
