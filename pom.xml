@@ -55,7 +55,7 @@
 		<openjfx.version>17</openjfx.version>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
-		<opensc.version>0.25.0</opensc.version>
+		<opensc.version>0.25.1</opensc.version>
 		<izpack.version>5.1.3</izpack.version>
 		<izpack.staging>${project.build.directory}/staging</izpack.staging>
 		<macbundle.path>${project.build.directory}/esup-dss-client.app</macbundle.path>
@@ -475,7 +475,7 @@
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}_win64.msi"
 									 dest="${izpack.staging}/OpenSC-${opensc.version}_win64.msi" />
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/opensc-${opensc.version}.tar.gz"
-									 dest="${izpack.staging}/opensc-0.25.0.tar.gz" />
+									 dest="${izpack.staging}/opensc-0.25.1.tar.gz" />
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-win_x64.zip"
 									 dest="${basedir}/openjdk-win.zip" />
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-linux_x64.tar.gz"
