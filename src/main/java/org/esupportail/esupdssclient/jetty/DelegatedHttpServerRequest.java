@@ -13,9 +13,9 @@
  */
 package org.esupportail.esupdssclient.jetty;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.esupportail.esupdssclient.api.plugin.HttpRequest;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 
