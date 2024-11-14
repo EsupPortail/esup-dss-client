@@ -13,21 +13,19 @@
  */
 package org.esupportail.esupdssclient.jetty;
 
-import jakarta.servlet.http.HttpServletRequest;
+import org.eclipse.jetty.server.Request;
 import org.esupportail.esupdssclient.api.plugin.HttpRequest;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 public class DelegatedHttpServerRequest implements HttpRequest {
 
-	private HttpServletRequest wrapped;
+	private Request wrapped;
 
 	private String context;
 
-	public DelegatedHttpServerRequest(HttpServletRequest delegate, String context) {
+	public DelegatedHttpServerRequest(Request delegate, String context) {
 		this.wrapped = delegate;
-
 		String ctx = null;
 		if (context.startsWith("/")) {
 			ctx = context;
@@ -39,21 +37,21 @@ public class DelegatedHttpServerRequest implements HttpRequest {
 
 	@Override
 	public String getTarget() {
-		return wrapped.getPathInfo().substring(context.length());
+		return Request.getPathInContext(wrapped).substring(context.length());
 	}
 
 	@Override
 	public InputStream getInputStream() {
-		try {
-			return wrapped.getInputStream();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		return Request.asInputStream(wrapped);
 	}
 
 	@Override
 	public String getParameter(String name) {
-		return wrapped.getParameter(name);
-	}
+		if(wrapped.getAttributeNameSet().contains(name)) {
+			return wrapped.getAttribute(name).toString();
+		} else {
+			return null;
+		}
+    }
 
 }

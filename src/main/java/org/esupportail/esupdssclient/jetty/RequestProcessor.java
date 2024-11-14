@@ -18,13 +18,10 @@ import com.google.gson.GsonBuilder;
 import eu.europa.esig.dss.model.x509.CertificateToken;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.io.IOUtils;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
 import org.esupportail.esupdssclient.ConfigurationException;
 import org.esupportail.esupdssclient.TechnicalException;
 import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
@@ -42,13 +39,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RequestProcessor extends AbstractHandler {
+public class RequestProcessor extends Handler.Abstract {
 
 	private static final Logger logger = LoggerFactory.getLogger(RequestProcessor.class.getName());
 
@@ -58,23 +55,20 @@ public class RequestProcessor extends AbstractHandler {
 			.registerTypeAdapter(CertificateToken.class, new CertificateTypeAdapter()).create();
 
 	private static final String UTF8 = "UTF-8";
-	
-	private static final String TEXT_JAVASCRIPT = "text/javascript";
-	private static final String TEXT_PLAIN = "text/plain";
-	private static final String APPLICATION_JSON = "application/json";
-	private static final String IMAGE_PNG = "image/png";
-	
+
 	private static final String NEXUJS_TEMPLATE = "nexu.ftl.js";
 
 	private EsupDSSClientAPI api;
 
 	private String apiHostname;
 
-	private Template template;
+	private final Template template;
+
+	private Callback callback;
 
 	public RequestProcessor() {
 		try {
-			Configuration cfg = new Configuration(Configuration.VERSION_2_3_22);
+			Configuration cfg = new Configuration(Configuration.VERSION_2_3_33);
 			cfg.setClassForTemplateLoading(getClass(), "/");
 			this.template = cfg.getTemplate(NEXUJS_TEMPLATE, UTF8);
 		} catch (IOException e) {
@@ -91,52 +85,46 @@ public class RequestProcessor extends AbstractHandler {
 		this.apiHostname = apiHostname;
 	}
 
+	public void writeResponse(Response response, String text) throws IOException {
+		response.write(true, ByteBuffer.wrap(text.getBytes()), callback);
+		callback.succeeded();
+	}
+
 	@Override
-	public void handle(String target, Request arg1, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-		if (!"0:0:0:0:0:0:0:1".equals(request.getRemoteHost()) && !"127.0.0.1".equals(request.getRemoteHost())) {
-			logger.warn("Cannot accept request from " + request.getRemoteHost());
+	public boolean handle(Request request, Response response, Callback callback) throws Exception {
+		this.callback = callback;
+		String target = Request.getPathInContext(request);
+		String remoteAddr = Request.getRemoteAddr(request);
+		if (!"0:0:0:0:0:0:0:1".equals(remoteAddr) && !"127.0.0.1".equals(remoteAddr)) {
+			logger.warn("Cannot accept request from " + remoteAddr);
 			response.setStatus(HttpStatus.ERROR.getHttpCode());
-			response.setCharacterEncoding(UTF8);
-			response.setContentType(TEXT_PLAIN);
-			PrintWriter writer = response.getWriter();
-			writer.write("Please connect from localhost");
-			writer.close();
-			return;
+			writeResponse(response, "Please connect from localhost");
+			callback.failed(new Throwable("Please connect from localhost"));
+			return false;
 		}
 
-		final String errorMessage = returnNullIfValid(request);
-		if(errorMessage != null) {
-			logger.warn("Invalid request " + errorMessage);
-			response.setStatus(HttpStatus.ERROR.getHttpCode());
-			response.setCharacterEncoding(UTF8);
-			response.setContentType(TEXT_PLAIN);
-			PrintWriter writer = response.getWriter();
-			writer.write(errorMessage);
-			writer.close();
-			return;
-		}
-		
 		if(api.getAppConfig().isCorsAllowAllOrigins()) {
-			response.setHeader("Access-Control-Allow-Origin", "*");
+			response.getHeaders().add("Access-Control-Allow-Origin", "*");
 		} else {
-			if(api.getAppConfig().getCorsAllowedOrigins().contains(request.getHeader("Origin"))) {
-				response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
+			if(api.getAppConfig().getCorsAllowedOrigins().contains(request.getHeaders().get("Origin"))) {
+				response.getHeaders().add("Access-Control-Allow-Origin", request.getHeaders().get("Origin"));
 			} else {
 				// No match ==> use first value returned by iterator and log a warning
-				logger.warn(request.getHeader("Origin") + " does not match any value in corsAllowedOrigins: "
+				logger.warn(request.getHeaders().get("Origin") + " does not match any value in corsAllowedOrigins: "
 						+ api.getAppConfig().getCorsAllowedOrigins());
-				response.setHeader("Access-Control-Allow-Origin", api.getAppConfig().getCorsAllowedOrigins().iterator().next());
+				response.getHeaders().add("Access-Control-Allow-Origin", api.getAppConfig().getCorsAllowedOrigins().iterator().next());
 			}
 		}
-		response.setHeader("Vary", "Origin");
-		response.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
-		response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+		response.getHeaders().add("Vary", "Origin");
+		response.getHeaders().add("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
+		response.getHeaders().add("Access-Control-Allow-Headers", "Content-Type");
 
 		if ("OPTIONS".equals(request.getMethod())) {
 			response.setStatus(HttpStatus.OK.getHttpCode());
-			response.getWriter().close();
-			return;
+			callback.succeeded();
+			return true;
 		}
+
 		logger.info("Request " + target);
 
 		try {
@@ -149,40 +137,25 @@ public class RequestProcessor extends AbstractHandler {
 			} else {
 				httpPlugin(target, request, response);
 			}
+			return true;
 		} catch(Exception e) {
 			logger.error("Cannot process request", e);
 			try {
 				response.setStatus(HttpStatus.ERROR.getHttpCode());
-				response.setCharacterEncoding(UTF8);
-				response.setContentType(APPLICATION_JSON);
-				
-				final Execution<?> execution = new Execution<Object>(BasicOperationStatus.EXCEPTION);
+								final Execution<?> execution = new Execution<>(BasicOperationStatus.EXCEPTION);
 				final Feedback feedback = new Feedback(e);
 				feedback.setApiVersion(api.getAppConfig().getApplicationVersion());
 				feedback.setInfo(api.getEnvironmentInfo());
 				execution.setFeedback(feedback);
-				
-				final PrintWriter writer = response.getWriter();
-				writer.write(customGson.toJson(execution));
-				writer.close();
+				writeResponse(response, customGson.toJson(execution));
 			} catch (IOException e2) {
 				logger.error("Cannot write error !?", e2);
 			}
 		}
+		return false;
 	}
 
-	/**
-	 * This method checks the validity of the given request.
-	 * <p>This implementation returns <code>null</code> by contract.
-	 * @param request The request to check.
-	 * @return An error message if request is invalid or <code>null</code>
-	 * if the request is valid.
-	 */
-	protected String returnNullIfValid(final HttpServletRequest request) {
-		return null;
-	}
-	
-	private void httpPlugin(String target, HttpServletRequest request, HttpServletResponse response) throws Exception {
+	private void httpPlugin(String target, Request request, Response response) throws Exception {
 		int index = target.indexOf("/", 1);
 		String pluginId = target.substring(target.charAt(0) == '/' ? 1 : 0, index);
 
@@ -194,50 +167,35 @@ public class RequestProcessor extends AbstractHandler {
 			throw new TechnicalException("Plugin responded null");
 		} else {
 			response.setStatus(resp.getHttpStatus().getHttpCode());
-			response.setContentType(resp.getContentType());
-			PrintWriter writer = response.getWriter();
-			writer.write(resp.getContent());
-			writer.close();
+			writeResponse(response, resp.getContent());
 		}
 	}
 
-	private void apiInfo(HttpServletResponse response) throws IOException {
-		response.setCharacterEncoding(UTF8);
-		response.setContentType(APPLICATION_JSON);
-		response.setHeader("pragma", "no-cache");
-		response.setIntHeader("expires", -1);
-		PrintWriter writer = response.getWriter();
-		writer.write("{ \"version\": \"" + api.getAppConfig().getApplicationVersion() + "\"}");
-		writer.close();
+	private void apiInfo(Response response) throws IOException {
+		response.getHeaders().add("pragma", "no-cache");
+		response.getHeaders().add("expires", -1);
+		writeResponse(response, "{ \"version\": \"" + api.getAppConfig().getApplicationVersion() + "\"}");
 	}
 
-	private void favIcon(HttpServletResponse response) throws IOException {
-		response.setContentType(IMAGE_PNG);
+	private void favIcon(Response response) throws IOException {
 		InputStream in = this.getClass().getResourceAsStream("/tray-icon.png");
-		ServletOutputStream out = response.getOutputStream();
-		IOUtils.copy(in, out);
+		response.write(true, ByteBuffer.wrap(in.readAllBytes()), callback);
 		in.close();
-		out.close();
 	}
 
-	private void nexuJs(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	private void nexuJs(Request request, Response response) throws IOException {
 		final StringWriter writer = new StringWriter();
 		final Map<String, String> model = new HashMap<>();
-		model.put("scheme", request.getScheme());
+		model.put("scheme", request.getHttpURI().getScheme());
 		model.put("api_hostname", apiHostname);
-		model.put("api_port", Integer.toString(request.getLocalPort()));
-
+		model.put("api_port", Integer.toString(Request.getLocalPort(request)));
 		try {
 			template.process(model, writer);
 		} catch (Exception e) {
 			logger.error("Cannot process template", e);
 			throw new TechnicalException("Cannot process template", e);
 		}
-
-		response.setCharacterEncoding(UTF8);
-		response.setContentType(TEXT_JAVASCRIPT);
-		PrintWriter out = response.getWriter();
-		out.println(writer.toString());
-		out.close();
+		writeResponse(response, writer.toString());
 	}
+
 }
