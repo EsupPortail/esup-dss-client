@@ -13,13 +13,13 @@
  */
 package org.esupportail.esupdssclient.keystore;
 
+import jakarta.xml.bind.annotation.*;
 import org.esupportail.esupdssclient.DatabaseEventHandler;
 import org.esupportail.esupdssclient.ProductDatabase;
 import org.esupportail.esupdssclient.api.ConfiguredKeystore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

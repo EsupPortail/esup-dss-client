@@ -13,7 +13,8 @@
  */
 package org.esupportail.esupdssclient.api;
 
-import javax.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.*;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 

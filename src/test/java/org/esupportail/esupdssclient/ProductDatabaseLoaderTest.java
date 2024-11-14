@@ -13,10 +13,10 @@
  */
 package org.esupportail.esupdssclient;
 
+import jakarta.xml.bind.JAXBContext;
 import org.esupportail.esupdssclient.generic.SCDatabase;
 import org.junit.Test;
 
-import javax.xml.bind.JAXBContext;
 import java.io.File;
 
 public class ProductDatabaseLoaderTest {

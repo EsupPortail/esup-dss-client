@@ -18,6 +18,7 @@ import com.google.gson.GsonBuilder;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.model.ToBeSigned;
 import eu.europa.esig.dss.model.x509.CertificateToken;
+import jakarta.xml.bind.DatatypeConverter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.esupportail.esupdssclient.api.*;
@@ -28,12 +29,10 @@ import org.esupportail.esupdssclient.json.LocalDateAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.DatatypeConverter;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 

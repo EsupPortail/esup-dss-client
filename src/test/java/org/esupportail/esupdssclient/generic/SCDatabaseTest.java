@@ -14,12 +14,11 @@
 package org.esupportail.esupdssclient.generic;
 
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
+import jakarta.xml.bind.JAXBContext;
 import org.esupportail.esupdssclient.api.EnvironmentInfo;
 import org.esupportail.esupdssclient.api.ScAPI;
 import org.junit.Assert;
 import org.junit.Test;
-
-import javax.xml.bind.JAXBContext;
 
 public class SCDatabaseTest {
 

@@ -1,5 +1,6 @@
 package org.esupportail.esupdssclient.generic;
 
+import jakarta.xml.bind.JAXBException;
 import org.apache.commons.io.FileUtils;
 import org.esupportail.esupdssclient.EsupDSSClientException;
 import org.esupportail.esupdssclient.api.AppConfig;
@@ -11,7 +12,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.JAXBException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;

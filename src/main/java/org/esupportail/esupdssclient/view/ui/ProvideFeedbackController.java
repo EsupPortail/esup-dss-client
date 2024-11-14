@@ -13,6 +13,7 @@
  */
 package org.esupportail.esupdssclient.view.ui;
 
+import jakarta.xml.bind.JAXBException;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -26,7 +27,6 @@ import org.esupportail.esupdssclient.generic.DebugHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.JAXBException;
 import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
@@ -59,7 +59,7 @@ public class ProvideFeedbackController extends AbstractFeedbackUIOperationContro
 			Feedback feedback = null;
 			try {
 				feedback = dh.processError(new EsupDSSClientException());
-			} catch (IOException |JAXBException ex) {
+			} catch (IOException | JAXBException ex) {
 				logger.warn(ex.getMessage(), ex);
 			} 
 			new Thread(() -> {

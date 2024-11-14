@@ -13,13 +13,12 @@
  */
 package org.esupportail.esupdssclient.generic;
 
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.adapters.NormalizedStringAdapter;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.esupportail.esupdssclient.api.EnvironmentInfo;
 import org.esupportail.esupdssclient.api.ScAPI;
-
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.adapters.NormalizedStringAdapter;
-import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 /**
  * The ConnectionInfo contains the information needed to configure the connection to a SmartCard with the generic API.
@@ -34,7 +33,7 @@ public class ConnectionInfo {
 
 	private ScAPI selectedApi;
 
-	@XmlJavaTypeAdapter(value=NormalizedStringAdapter.class)
+	@XmlJavaTypeAdapter(value= NormalizedStringAdapter.class)
 	private String apiParam;
 
 	public ScAPI getSelectedApi() {

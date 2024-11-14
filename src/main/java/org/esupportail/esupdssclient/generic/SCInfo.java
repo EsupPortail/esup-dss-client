@@ -14,9 +14,9 @@
 package org.esupportail.esupdssclient.generic;
 
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
+import jakarta.xml.bind.annotation.*;
 import org.esupportail.esupdssclient.api.EnvironmentInfo;
 
-import javax.xml.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
