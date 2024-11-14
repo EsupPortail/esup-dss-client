@@ -16,7 +16,6 @@ package org.esupportail.esupdssclient.systray;
 import dorkbox.systemTray.Menu;
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.SystemTray;
-import org.apache.tools.ant.util.LineOrientedOutputStream;
 import org.esupportail.esupdssclient.api.SystrayMenuItem;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
 import org.slf4j.Logger;
