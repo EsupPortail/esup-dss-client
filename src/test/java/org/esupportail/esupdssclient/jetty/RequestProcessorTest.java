@@ -1,18 +1,19 @@
 package org.esupportail.esupdssclient.jetty;
 
+import org.eclipse.jetty.http.HttpURI;
+import org.eclipse.jetty.server.ConnectionMetaData;
+import org.eclipse.jetty.server.Context;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.server.internal.ResponseHttpFields;
 import org.eclipse.jetty.util.Callback;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.stubbing.Answer;
 
-import java.io.IOException;
 import java.io.StringReader;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.InetSocketAddress;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -20,7 +21,6 @@ import static org.mockito.Mockito.*;
 
 public class RequestProcessorTest {
 
-	private Map<String, String> parameters;
 	private Response response;
 	private RequestProcessor rp;
 	private EsupDSSClientAPI api;
@@ -31,24 +31,27 @@ public class RequestProcessorTest {
 
 	@SuppressWarnings("rawtypes")
 	@Before
-	public void init() throws IOException {
-		parameters = new HashMap<>();
-		response = mock(Response.class);
-		doAnswer((Answer) invocation -> {
-			String key = (String) invocation.getArguments()[0];
-			String value = (String) invocation.getArguments()[1];
-			parameters.put(key, value);
-			return null;
-		}).when(response).getHeaders().add(anyString(), anyString());
-		rp = new RequestProcessor();
+	public void init() {
 		api = mock(EsupDSSClientAPI.class);
+		request = mock(Request.class);
+		callback = mock(Callback.class);
+		response = mock(Response.class);
+		when(response.getHeaders()).thenReturn(new ResponseHttpFields());
+		when(request.getHeaders()).thenReturn(new ResponseHttpFields());
+		rp = new RequestProcessor();
 		appConfig = new AppConfig();
 		when(api.getAppConfig()).thenReturn(appConfig);
 		rp.setConfig(api);
-		request = mock(Request.class);
-		callback = mock(Callback.class);
-		when(Request.getRemoteAddr(request)).thenReturn("127.0.0.1");
-		when(Response.getOriginalResponse(response)).thenReturn(new Response.Wrapper(request, response));
+		HttpURI mockHttpURI = mock(HttpURI.class);
+		when(mockHttpURI.getCanonicalPath()).thenReturn("/");
+		when(request.getHttpURI()).thenReturn(mockHttpURI);
+		Context mockContext = mock(Context.class);
+		when(request.getContext()).thenReturn(mockContext);
+		when(mockContext.getPathInContext(anyString())).thenReturn("/");
+		ConnectionMetaData mockConnectionMetaData = mock(ConnectionMetaData.class);
+		when(mockConnectionMetaData.getRemoteSocketAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 9795));
+		when(request.getConnectionMetaData()).thenReturn(mockConnectionMetaData);
+		when(Request.getPathInContext(request)).thenReturn("/");
 		props = new Properties();
 	}
 	
@@ -59,7 +62,7 @@ public class RequestProcessorTest {
 		props.load(new StringReader(allowedOriginProp));
 		appConfig.loadFromProperties(props);
 		rp.handle(request, response, callback);
-		assertEquals(allowedOrigin, parameters.get("Access-Control-Allow-Origin"));
+		assertEquals(allowedOrigin, response.getHeaders().get("Access-Control-Allow-Origin"));
 		
 	}
 
@@ -67,7 +70,7 @@ public class RequestProcessorTest {
 	public void testCorsOriginNotProvided() throws Exception {
 		appConfig.loadFromProperties(new Properties());
 		rp.handle(request, response, callback);
-		assertEquals("*", parameters.get("Access-Control-Allow-Origin"));
+		assertEquals("*", response.getHeaders().get("Access-Control-Allow-Origin"));
 	}
 	
 }
