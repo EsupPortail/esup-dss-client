@@ -39,9 +39,9 @@ Pour obtenir le jar seul :
 ### Sous macOS
 Pour obtenir l’installateur PKG, il faut être sous macOS. Voici les prérequis à installer :
 
-git (et donc les outils Xcode)
-brew (voir https://brew.sh/index_fr)
-maven via brew (brew install maven)
+* git (et donc les outils Xcode)
+* brew (voir https://brew.sh/index_fr)
+* maven via brew (brew install maven)
 
 Modifier le code installateur en cas de signature du package dans src/izpack/pkg.sh
 
