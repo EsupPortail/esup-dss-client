@@ -15,7 +15,6 @@ package org.esupportail.esupdssclient.keystore;
 
 
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
-import eu.europa.esig.dss.enumerations.MaskGenerationFunction;
 import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
 import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.Digest;
@@ -240,12 +239,6 @@ public class KeystoreProductAdapter implements ProductAdapter {
 		}
 
 		@Override
-		public SignatureValue sign(ToBeSigned toBeSigned, DigestAlgorithm digestAlgorithm, MaskGenerationFunction mgf, DSSPrivateKeyEntry keyEntry) throws DSSException {
-			initSignatureTokenConnection();
-			return proxied.sign(toBeSigned, digestAlgorithm, mgf, keyEntry);
-		}
-
-		@Override
 		public SignatureValue sign(ToBeSigned toBeSigned, SignatureAlgorithm signatureAlgorithm, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
 			initSignatureTokenConnection();
 			return proxied.sign(toBeSigned, signatureAlgorithm, dssPrivateKeyEntry);
@@ -254,11 +247,6 @@ public class KeystoreProductAdapter implements ProductAdapter {
 		@Override
 		public SignatureValue signDigest(Digest digest, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
 			throw new IllegalStateException("This product adapter cannot return list of supported digest algorithms.");
-		}
-
-		@Override
-		public SignatureValue signDigest(Digest digest, MaskGenerationFunction maskGenerationFunction, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
-			return null;
 		}
 
 		@Override

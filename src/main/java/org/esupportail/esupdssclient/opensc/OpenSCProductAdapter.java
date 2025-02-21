@@ -14,7 +14,6 @@
 package org.esupportail.esupdssclient.opensc;
 
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
-import eu.europa.esig.dss.enumerations.MaskGenerationFunction;
 import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
 import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.Digest;
@@ -30,7 +29,6 @@ import org.esupportail.esupdssclient.api.flow.NoOpFutureOperationInvocation;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 /**
  * Product adapter for {@link OpenSC}.
@@ -172,12 +170,6 @@ public class OpenSCProductAdapter implements ProductAdapter {
 		}
 
 		@Override
-		public SignatureValue sign(ToBeSigned toBeSigned, DigestAlgorithm digestAlgorithm, MaskGenerationFunction mgf, DSSPrivateKeyEntry keyEntry) throws DSSException {
-			initSignatureTokenConnectionPassword();
-			return proxied.sign(toBeSigned, digestAlgorithm, mgf, keyEntry);
-		}
-
-		@Override
 		public SignatureValue sign(ToBeSigned toBeSigned, SignatureAlgorithm signatureAlgorithm, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
 			initSignatureTokenConnectionPassword();
 			return proxied.sign(toBeSigned, signatureAlgorithm, dssPrivateKeyEntry);
@@ -185,11 +177,6 @@ public class OpenSCProductAdapter implements ProductAdapter {
 
 		@Override
 		public SignatureValue signDigest(Digest digest, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
-			return null;
-		}
-
-		@Override
-		public SignatureValue signDigest(Digest digest, MaskGenerationFunction maskGenerationFunction, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
 			return null;
 		}
 

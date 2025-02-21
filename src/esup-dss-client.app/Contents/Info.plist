@@ -9,7 +9,7 @@
     <key>CFBundleIdentifier</key>
     <string>org.esupportail.esup-dss-client</string>
     <key>CFBundleVersion</key>
-    <string>1.2.2.0</string>
+    <string>1.2.3.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -19,6 +19,6 @@
     <key>CFBundleIconFile</key>
     <string>esupdssclient.icns</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.2.2</string>
+    <string>1.2.3</string>
 </dict>
 </plist>
