@@ -4,8 +4,8 @@
 
 Esup-DSS-Client est la nouvelle passerelle entre le poste client et Esup-Signature https://github.com/EsupPortail/esup-signature
 
-Cette application est necessaire pour effectuer des signatures eIDas (RGS**) dans le cadre de la librairie DSS Signature (présente dans Esup-Signature : https://github.com/esig/dss)
-Esup-DSS-Client remplace l’utilisation du client NexU (https://github.com/nowina-solutions/nexu), qui n’est plus maintenu depuis 2018
+Cette application est necessaire pour effectuer des signatures eIDas (RGS**) dans le cadre de la librairie DSS Signature (présente dans Esup-Signature : https://github.com/esig/dss).
+Esup-DSS-Client remplace l’utilisation du client NexU (https://github.com/nowina-solutions/nexu), qui n’est plus maintenu depuis 2018.
 Plus de détails sur le wiki : https://www.esup-portail.org/wiki/display/SIGN 
 
 Esup-DSS-Client est à installer sur tous les postes clients des utilisateurs qui ont besoin de signer avec un certificat local ou materiel.
