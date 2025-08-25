@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.esupportail</groupId>
 	<artifactId>esupdssclient</artifactId>
-	<version>1.2.3</version>
+	<version>1.2.4</version>
 	<packaging>jar</packaging>
 	<name>Esup-DSS-Client</name>
 	<description>Multi-browser, multi-platform, OpenSC remote signature tool.</description>
@@ -45,7 +45,7 @@
 		<java.version>17</java.version>
 		<encoding>UTF-8</encoding>
 		<skip.package>false</skip.package>
-		<dss.version>6.2</dss.version>
+		<dss.version>6.3</dss.version>
 		<maven.release.plugin.version>2.5.3</maven.release.plugin.version>
 		<slf4j.version>2.0.4</slf4j.version>
 		<jna.version>4.2.2</jna.version>
@@ -633,12 +633,12 @@
 								<path>./jrewin/zulu${jdk.zulu.version}-win_x64</path>
 							</jre>
 							<versionInfo>
-								<fileVersion>1.2.3.0</fileVersion>
+								<fileVersion>1.2.4.0</fileVersion>
 								<txtFileVersion>${project.version}</txtFileVersion>
 								<fileDescription>${project.name}</fileDescription>
-								<productVersion>1.2.3.0</productVersion>
-								<txtProductVersion>1.2.3.0</txtProductVersion>
-								<txtProductVersion>1.2.3.0</txtProductVersion>
+								<productVersion>1.2.4.0</productVersion>
+								<txtProductVersion>1.2.4.0</txtProductVersion>
+								<txtProductVersion>1.2.4.0</txtProductVersion>
 								<copyright>C</copyright>
 								<productName>${project.name}</productName>
 								<internalName>org.esupportail.esupdssclient</internalName>
