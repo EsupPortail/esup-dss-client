@@ -57,7 +57,7 @@
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
 		<opensc.version>0.26.1</opensc.version>
-		<izpack.version>5.1.3</izpack.version>
+		<izpack.version>5.2.4</izpack.version>
 		<izpack.staging>${project.build.directory}/staging</izpack.staging>
 		<macbundle.path>${project.build.directory}/esup-dss-client.app</macbundle.path>
 		<jdk.zulu.version>17.40.19-ca-fx-jre17.0.6</jdk.zulu.version>
@@ -595,7 +595,8 @@
 							<classifier>esup-dss-client</classifier>
 							<baseDir>${izpack.staging}</baseDir>
 							<installFile>${izpack.staging}/install.xml</installFile>
-							<output>${project.build.directory}/esup-dss-client-installer.jar</output>
+							<outputDirectory>${project.build.directory}</outputDirectory>
+							<finalName>esup-dss-client-installer</finalName>
 							<mkdirs>true</mkdirs>
 							<autoIncludeUrl>false</autoIncludeUrl>
 							<autoIncludeDevelopers>false</autoIncludeDevelopers>
