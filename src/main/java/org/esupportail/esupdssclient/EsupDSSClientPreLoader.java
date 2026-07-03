@@ -76,7 +76,7 @@ public class EsupDSSClientPreLoader extends Preloader {
 	@Override
 	public void start(Stage primaryStage) throws Exception {
 		if(getConfig().isShowSplashScreen()) {
-			InputStream inputStream = EsupDSSClientPreLoader.class.getResourceAsStream("/images/logo.jpg");
+			InputStream inputStream = EsupDSSClientPreLoader.class.getResourceAsStream("/images/logo.png");
 			final ImageView splash = new ImageView(new Image(inputStream));
 			final StackPane background = new StackPane(splash);
 			final Scene splashScene = new Scene(background, 700, 300);
