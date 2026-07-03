@@ -41,10 +41,10 @@ public class DssTest {
 		System.out.println("Issuer : " + certificateToken.getIssuerX500Principal().getName());
 		System.out
 				.println("Other data : " + DSSASN1Utils.get(certificateToken.getIssuerX500Principal()).get("2.5.4.3"));
-		System.out.println("Extended key usage : " + DSSASN1Utils.getExtendedKeyUsage(certificateToken));
+		System.out.println("Extended key usage : " + CertificateExtensionsUtils.getExtendedKeyUsage(certificateToken));
 		List<KeyUsageBit> kubs = certificateToken.getKeyUsageBits();
 		for (KeyUsageBit kub : kubs) {
-			System.out.println("Usage : " + kub.name() + " | " + kub.toString());
+			System.out.println("Usage : " + kub.name() + " | " + kub);
 		}
 
 	}
