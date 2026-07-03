@@ -16,7 +16,7 @@ package org.esupportail.esupdssclient;
 import com.sun.javafx.application.LauncherImpl;
 import javafx.application.Application;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

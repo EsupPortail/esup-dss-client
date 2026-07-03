@@ -18,7 +18,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 

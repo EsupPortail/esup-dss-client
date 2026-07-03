@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
-import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class StageHelper {
 

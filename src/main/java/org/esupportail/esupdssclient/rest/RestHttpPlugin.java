@@ -20,7 +20,7 @@ import eu.europa.esig.dss.model.ToBeSigned;
 import eu.europa.esig.dss.model.x509.CertificateToken;
 import jakarta.xml.bind.DatatypeConverter;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.esupportail.esupdssclient.api.*;
 import org.esupportail.esupdssclient.api.plugin.*;
 import org.esupportail.esupdssclient.json.ByteArrayTypeAdapter;
@@ -34,7 +34,7 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.commons.lang.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
  * Default implementation of HttpPlugin for Esup-DSS-Client.

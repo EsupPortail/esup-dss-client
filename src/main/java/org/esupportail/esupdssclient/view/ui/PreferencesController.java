@@ -18,7 +18,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.esupportail.esupdssclient.EsupDSSClientApplication;
 import org.esupportail.esupdssclient.EsupDSSClientLauncher;
 import org.esupportail.esupdssclient.GlobalConfigurer;

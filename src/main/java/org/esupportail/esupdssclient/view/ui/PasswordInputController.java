@@ -20,7 +20,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 

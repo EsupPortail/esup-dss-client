@@ -13,7 +13,7 @@
  */
 package org.esupportail.esupdssclient.windows.keystore;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.esupportail.esupdssclient.api.Product;
 
 import java.util.ResourceBundle;

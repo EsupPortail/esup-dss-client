@@ -13,7 +13,7 @@
  */
 package org.esupportail.esupdssclient;
 
-import org.apache.commons.lang.ClassUtils;
+import org.apache.commons.lang3.ClassUtils;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
