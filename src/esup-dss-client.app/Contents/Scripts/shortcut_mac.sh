@@ -11,7 +11,7 @@ fi
 # Chemin et nom du fichier .app
 APP_FILE="/Applications/esup-dss-client.app/"
 
-sudo chmod -R +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-17.jre/Contents/Home/bin
+sudo chmod -R +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-21.jre/Contents/Home/bin
 
 # Créer le fichier exécutable du .app
 
