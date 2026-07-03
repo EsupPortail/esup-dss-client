@@ -186,7 +186,7 @@ public class SystrayMenu {
 					public OperationResult<Void> call(OperationFactory operationFactory) {
 						return operationFactory.getOperation(NonBlockingUIOperation.class, "/fxml/about.fxml",
 								api.getAppConfig().getApplicationName(), api.getAppConfig().getApplicationVersion(),
-								resources).perform();
+								resources, api).perform();
 					}
 				};
 			}

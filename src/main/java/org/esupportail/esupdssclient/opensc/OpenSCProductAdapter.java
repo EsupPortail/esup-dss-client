@@ -25,6 +25,8 @@ import eu.europa.esig.dss.token.SignatureTokenConnection;
 import org.esupportail.esupdssclient.api.*;
 import org.esupportail.esupdssclient.api.flow.FutureOperationInvocation;
 import org.esupportail.esupdssclient.api.flow.NoOpFutureOperationInvocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyStore;
 import java.util.ArrayList;
@@ -36,6 +38,8 @@ import java.util.List;
  * @author David Lemaignent (david.lemaignent@univ-rouen.fr)
  */
 public class OpenSCProductAdapter implements ProductAdapter {
+
+	private static final Logger logger = LoggerFactory.getLogger(OpenSCProductAdapter.class);
 
 	public OpenSCProductAdapter() {
 		super();
@@ -124,7 +128,21 @@ public class OpenSCProductAdapter implements ProductAdapter {
 	@Override
 	public List<Product> detectProducts() {
 		final List<Product> products = new ArrayList<>();
-		products.add(new OpenSC());
+		String version = null;
+		boolean enabled = false;
+		OpenSCSignatureToken token = new OpenSCSignatureToken(null);
+		try {
+			byte[] output = token.launchProcess("opensc-tool -i");
+			String outputStr = new String(output).trim();
+			// opensc-tool -i renvoie plusieurs lignes, la première contient la version
+			// OpenSC 0.26.1 [gcc  14.2.0]
+			version = outputStr.split("\n")[0].trim();
+			enabled = true;
+			logger.info("OpenSC detected via opensc-tool: {}", version);
+		} catch (Exception e) {
+			logger.warn("OpenSC not detected: opensc-tool failed. Error: {}", e.getMessage());
+		}
+		products.add(new OpenSC(version, enabled));
 		return products;
 	}
 

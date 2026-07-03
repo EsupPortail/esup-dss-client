@@ -79,6 +79,7 @@ public class ProductSelectionController extends AbstractUIOperationController<Pr
 				button.setToggleGroup(product);
 				button.setUserData(p);
 				button.setMnemonicParsing(false);
+				button.setDisable(!p.isEnabled());
 				radioButtons.add(button);
 			}
 

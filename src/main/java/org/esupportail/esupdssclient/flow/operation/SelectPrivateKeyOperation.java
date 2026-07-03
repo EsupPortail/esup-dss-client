@@ -22,6 +22,7 @@ import org.esupportail.esupdssclient.api.Product;
 import org.esupportail.esupdssclient.api.ProductAdapter;
 import org.esupportail.esupdssclient.api.flow.BasicOperationStatus;
 import org.esupportail.esupdssclient.api.flow.OperationResult;
+import org.esupportail.esupdssclient.opensc.OpenSCNoKeyException;
 import org.esupportail.esupdssclient.view.core.UIOperation;
 
 import java.util.Iterator;
@@ -90,6 +91,8 @@ public class SelectPrivateKeyOperation extends AbstractCompositeOperation<DSSPri
             }
         } catch(final CancelledOperationException e) {
             return new OperationResult<DSSPrivateKeyEntry>(BasicOperationStatus.USER_CANCEL);
+        } catch(final OpenSCNoKeyException e) {
+            return new OperationResult<DSSPrivateKeyEntry>(CoreOperationStatus.NO_CARD_OR_KEY);
         }
 
         DSSPrivateKeyEntry key = null;

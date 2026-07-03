@@ -25,5 +25,6 @@ public interface Product {
 	 * @return A label for this product.
 	 */
 	String getLabel();
+	default boolean isEnabled() { return true; }
 	
 }

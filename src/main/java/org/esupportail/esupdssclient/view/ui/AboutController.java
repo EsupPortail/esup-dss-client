@@ -20,21 +20,21 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.esupportail.esupdssclient.EsupDSSClientLauncher;
 import org.esupportail.esupdssclient.EsupDSSClientPreLoader;
+import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
+import org.esupportail.esupdssclient.api.OpenSC;
+import org.esupportail.esupdssclient.api.Product;
 import org.esupportail.esupdssclient.flow.StageHelper;
 import org.esupportail.esupdssclient.view.core.AbstractUIOperationController;
 
 import java.awt.*;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class AboutController extends AbstractUIOperationController<Void> implements Initializable {
@@ -44,6 +44,9 @@ public class AboutController extends AbstractUIOperationController<Void> impleme
 
 	@FXML
 	private Label applicationVersion;
+
+	@FXML
+	private Label openscVersion;
 
 	@FXML
 	private Hyperlink hyperlink;
@@ -72,11 +75,26 @@ public class AboutController extends AbstractUIOperationController<Void> impleme
 	public void init(Object... params) {
 		final String applicationName = (String) params[0];
 		StageHelper.getInstance().setTitle("Esup-DSS-Client - " + resources.getString("about.header") + " " + applicationName);
-		InputStream inputStream = EsupDSSClientPreLoader.class.getResourceAsStream("/images/logo.jpg");
+		InputStream inputStream = EsupDSSClientPreLoader.class.getResourceAsStream("/images/logo.png");
 		if(inputStream != null) {
 			this.logo.setImage(new Image(inputStream));
 		}
         this.applicationVersion.setText(EsupDSSClientLauncher.getProperties().getProperty("display_version"));
+		if (params.length > 3 && params[3] instanceof EsupDSSClientAPI) {
+			final EsupDSSClientAPI api = (EsupDSSClientAPI) params[3];
+			final List<Product> products = api.detectProducts();
+			String openscVersionStr = resources.getString("about.no.opensc");
+			for (Product p : products) {
+				if (p instanceof OpenSC) {
+					OpenSC osc = (OpenSC) p;
+					if (osc.getVersion() != null) {
+						openscVersionStr = osc.getVersion();
+					}
+					break;
+				}
+			}
+			this.openscVersion.setText(openscVersionStr);
+		}
 		this.hyperlink.setOnAction(e -> {
 			try {
 				Desktop.getDesktop().browse(new URI(hyperlink.getText()));
