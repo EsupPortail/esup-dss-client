@@ -53,7 +53,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<powermock.version>2.0.9</powermock.version>
 		<openjfx.version>23.0.1</openjfx.version>
-		<jetty.version>12.0.15</jetty.version>
+		<jetty.version>12.0.32</jetty.version>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
 		<opensc.version>0.26.1</opensc.version>
