@@ -33,8 +33,9 @@ public interface SystrayMenuInitializer {
      * @param operationFactory The {@link OperationFactory}.
      * @param exitMenuItem The systray menu item for exit.
      * @param systrayMenuItems Systray menu items.
+     * @return {@code true} if the systray menu was initialized, {@code false} otherwise.
      */
-    void init(final String tooltip, final URL trayIconURL, final OperationFactory operationFactory,
+    boolean init(final String tooltip, final URL trayIconURL, final OperationFactory operationFactory,
     		final SystrayMenuItem exitMenuItem, final SystrayMenuItem... systrayMenuItems);
     
 }

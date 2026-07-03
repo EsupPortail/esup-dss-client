@@ -65,10 +65,16 @@ public class EsupDSSClientApplication extends Application {
 
 		server = startHttpServer(api);
 
+		boolean systrayInitialized = false;
 		if(api.getAppConfig().isEnableSystrayMenu()) {
-			new SystrayMenu(operationFactory, api, new UserPreferences(getConfig().getApplicationName()));
+			systrayInitialized = new SystrayMenu(operationFactory, api,
+					new UserPreferences(getConfig().getApplicationName())).isInitialized();
 		} else {
 			logger.info("Systray menu is disabled.");
+		}
+		if (!systrayInitialized) {
+			final UserPreferences prefs = new UserPreferences(getConfig().getApplicationName());
+			new SystrayFallbackWindow().show(primaryStage, api, operationFactory, prefs);
 		}
 
 		logger.info("Start finished");

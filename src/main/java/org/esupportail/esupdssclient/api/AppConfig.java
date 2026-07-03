@@ -68,6 +68,9 @@ public class AppConfig {
     private static final String ENABLE_DATABASE_WEB_LOADER = "enable_database_web_loader";
 
     private static final String ENABLE_SYSTRAY_MENU = "enable_systray_menu";
+    private static final String SYSTRAY_BACKEND = "systray_backend";
+    private static final String DORKBOX_TRAY_TYPE = "dorkbox_tray_type";
+    private static final String DORKBOX_TRAY_NAME = "dorkbox_tray_name";
     private static final String CORS_ALLOWED_ORIGIN = "cors_allowed_origin";
 
     private static final String TICKET_URL = "ticket_url";
@@ -133,6 +136,9 @@ public class AppConfig {
     private boolean enableDatabaseWebLoader;
 
     private boolean enableSystrayMenu;
+    private String systrayBackend;
+    private String dorkboxTrayType;
+    private String dorkboxTrayName;
 
     private String ticketUrl;
 
@@ -399,6 +405,30 @@ public class AppConfig {
         this.enableSystrayMenu = enableSystrayMenu;
     }
 
+    public String getSystrayBackend() {
+        return this.systrayBackend;
+    }
+
+    public void setSystrayBackend(final String systrayBackend) {
+        this.systrayBackend = systrayBackend;
+    }
+
+    public String getDorkboxTrayType() {
+        return this.dorkboxTrayType;
+    }
+
+    public void setDorkboxTrayType(final String dorkboxTrayType) {
+        this.dorkboxTrayType = dorkboxTrayType;
+    }
+
+    public String getDorkboxTrayName() {
+        return this.dorkboxTrayName;
+    }
+
+    public void setDorkboxTrayName(final String dorkboxTrayName) {
+        this.dorkboxTrayName = dorkboxTrayName;
+    }
+
     public File getApiHome() {
         if (this.apiHome != null) {
             return this.apiHome;
@@ -459,6 +489,9 @@ public class AppConfig {
 
         this.setEnableDatabaseWebLoader(Boolean.parseBoolean(props.getProperty(ENABLE_DATABASE_WEB_LOADER, "true")));
         this.setEnableSystrayMenu(Boolean.parseBoolean(props.getProperty(ENABLE_SYSTRAY_MENU, "true")));
+        this.setSystrayBackend(props.getProperty(SYSTRAY_BACKEND, "auto"));
+        this.setDorkboxTrayType(props.getProperty(DORKBOX_TRAY_TYPE, "auto"));
+        this.setDorkboxTrayName(props.getProperty(DORKBOX_TRAY_NAME, "org.esupportail.esupdssclient"));
         this.setCorsAllowedOrigins(props.getProperty(CORS_ALLOWED_ORIGIN, "*"));
         this.setTicketUrl(props.getProperty(TICKET_URL, ""));
         this.setEnableIncidentReport(Boolean.parseBoolean(props.getProperty(ENABLE_INCIDENT_REPORT, "false")));

@@ -136,3 +136,7 @@ RadioButton {
 ScrollPane {
 	-fx-background-color:transparent;
 }
+
+.fallback-message {
+    -fx-text-alignment: center;
+}

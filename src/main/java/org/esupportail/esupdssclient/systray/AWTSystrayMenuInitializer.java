@@ -35,7 +35,7 @@ public class AWTSystrayMenuInitializer implements SystrayMenuInitializer {
 	}
 	
 	@Override
-	public void init(final String tooltip, final URL trayIconURL, final OperationFactory operationFactory,
+	public boolean init(final String tooltip, final URL trayIconURL, final OperationFactory operationFactory,
 			final SystrayMenuItem exitMenuItem, final SystrayMenuItem... systrayMenuItems) {
 		if (SystemTray.isSupported()) {
 			final PopupMenu popup = new PopupMenu();
@@ -56,12 +56,14 @@ public class AWTSystrayMenuInitializer implements SystrayMenuInitializer {
 			
 			try {
 				SystemTray.getSystemTray().add(trayIcon);
+				return true;
 			} catch (final AWTException e) {
 				logger.error("Cannot add TrayIcon", e);
 			}
 		} else {
 			logger.error("System tray is currently not supported.");
 		}
+		return false;
 	}
 
 	private void exit(final OperationFactory operationFactory, final SystrayMenuItem exitMenuItem,
