@@ -61,7 +61,36 @@
 		<izpack.staging>${project.build.directory}/staging</izpack.staging>
 		<macbundle.path>${project.build.directory}/esup-dss-client.app</macbundle.path>
 		<jdk.zulu.version>21.50.19-ca-fx-jre21.0.11</jdk.zulu.version>
+		<mac.arch.suffix></mac.arch.suffix>
+		<jdk.zulu.arch>macosx_x64</jdk.zulu.arch>
 	</properties>
+
+	<profiles>
+		<profile>
+			<id>mac-x64</id>
+			<activation>
+				<property>
+					<name>mac-x64</name>
+				</property>
+			</activation>
+			<properties>
+				<mac.arch.suffix>-x64</mac.arch.suffix>
+				<jdk.zulu.arch>macosx_x64</jdk.zulu.arch>
+			</properties>
+		</profile>
+		<profile>
+			<id>mac-aarch64</id>
+			<activation>
+				<property>
+					<name>mac-aarch64</name>
+				</property>
+			</activation>
+			<properties>
+				<mac.arch.suffix>-aarch64</mac.arch.suffix>
+				<jdk.zulu.arch>macosx_aarch64</jdk.zulu.arch>
+			</properties>
+		</profile>
+	</profiles>
 
 	<repositories>
 		<repository>
@@ -442,6 +471,7 @@
 						<configuration>
 							<target if="mac.os">
 								<replace file="${izpack.staging}/pkg.sh" token="$macbundle.path" value="${project.build.directory}" />
+								<replace file="${izpack.staging}/pkg.sh" token="$mac.arch.suffix" value="${mac.arch.suffix}" />
 								<replace file="${macbundle.path}/Contents/scripts/opensc_mac.sh" token="$opensc.version" value="${opensc.version}" />
 							</target>
 						</configuration>
@@ -456,7 +486,7 @@
 							<target if="mac.os">
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}.dmg"
 									 dest="${macbundle.path}/Contents/Resources/OpenSC.dmg"/>
-								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-macosx_x64.zip"
+								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-${jdk.zulu.arch}.zip"
 									 dest="${basedir}/openjdk-mac.zip" />
 							</target>
 						</configuration>
@@ -489,7 +519,7 @@
 						<configuration>
 							<target if="mac.os">
 								<unzip src="${basedir}/openjdk-mac.zip" dest="target/jdktempmac" />
-								<move file="${project.build.directory}/jdktempmac/zulu${jdk.zulu.version}-macosx_x64" tofile="${macbundle.path}/Contents/Resources/jdkmac/zulu-21.jre"/>
+								<move file="${project.build.directory}/jdktempmac/zulu${jdk.zulu.version}-${jdk.zulu.arch}" tofile="${macbundle.path}/Contents/Resources/jdkmac/zulu-21.jre"/>
 								<delete file="${project.build.directory}/openjdk-mac.zip"/>
 								<delete dir="${project.build.directory}/jdktempmac"/>
 							</target>

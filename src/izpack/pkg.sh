@@ -11,4 +11,4 @@ productbuild --synthesize --package Distribution.pkg Distribution.xml
 #rm Distribution.pkg
 cd ../
 #productbuild --distribution esup-dss-client.app/Distribution.xml --sign "Developer ID Installer: ****" --resources esup-dss-client.app/Contents/Resources --package-path esup-dss-client.app esup-dss-client.pkg
-productbuild --distribution esup-dss-client.app/Distribution.xml --resources esup-dss-client.app/Contents/Resources --package-path esup-dss-client.app esup-dss-client.pkg
+productbuild --distribution esup-dss-client.app/Distribution.xml --resources esup-dss-client.app/Contents/Resources --package-path esup-dss-client.app esup-dss-client$mac.arch.suffix.pkg
