@@ -1,4 +1,4 @@
-![ESUP-DSS-CLIENT](https://github.com/EsupPortail/esup-dss-client/raw/master/src/main/resources/images/logo.jpg)
+![ESUP-DSS-CLIENT](https://github.com/EsupPortail/esup-dss-client/raw/master/src/main/resources/images/logo.png)
 
 # Esup-DSS-Client
 
@@ -45,7 +45,13 @@ Pour obtenir l’installateur PKG, il faut être sous macOS. Voici les prérequi
 
 Modifier le code installateur en cas de signature du package dans src/izpack/pkg.sh
 
-``` mvn clean package -Dmac.os=true ```
+Pour obtenir l’installateur PKG pour Intel :
+
+``` mvn clean package -Dmac.os=true -Pmac-x64 ```
+
+Pour obtenir l’installateur PKG pour Apple Silicon :
+
+``` mvn clean package -Dmac.os=true -Pmac-aarch64 ```
 
 ## Pour plus d'informations voir : 
 
