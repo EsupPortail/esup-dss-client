@@ -47,13 +47,12 @@
 		<skip.package>false</skip.package>
 		<dss.version>6.4</dss.version>
 		<maven.release.plugin.version>2.5.3</maven.release.plugin.version>
-		<slf4j.version>2.0.4</slf4j.version>
 		<jna.version>4.2.2</jna.version>
 		<mocca.version>1.3.30</mocca.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<powermock.version>2.0.9</powermock.version>
 		<openjfx.version>23.0.1</openjfx.version>
-		<jetty.version>12.0.32</jetty.version>
+		<jetty.version>12.0.36</jetty.version>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
 		<opensc.version>0.27.1</opensc.version>
@@ -219,21 +218,6 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>1.4.12</version>
-		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.apache.logging.log4j</groupId>-->
-<!--			<artifactId>log4j-core</artifactId>-->
-<!--			<version>2.20.0</version>-->
-<!--		</dependency>-->
-		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
 			<version>${jetty.version}</version>
@@ -312,27 +296,6 @@
 			<groupId>eu.europa.ec.joinup.sd-dss</groupId>
 			<artifactId>dss-diagnostic-jaxb</artifactId>
 			<version>${dss.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.izpack</groupId>
-			<artifactId>izpack-maven-plugin</artifactId>
-			<version>5.2.3</version>
-			<exclusions>
-				<exclusion>
-					<artifactId>tika-parsers</artifactId>
-					<groupId>org.apache.tika</groupId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-dependency-plugin</artifactId>
-			<version>3.8.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-assembly-plugin</artifactId>
-			<version>3.6.0</version>
 		</dependency>
 	</dependencies>
 
@@ -508,7 +471,7 @@
 						<configuration>
 							<target unless="mac.oc">
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/OpenSC-${opensc.version}_x64.msi"
-									 dest="${izpack.staging}/OpenSC-${opensc.version}_x64.msi" />
+									 dest="${izpack.staging}/OpenSC-${opensc.version}_win64.msi" />
 								<get src="https://github.com/OpenSC/OpenSC/releases/download/${opensc.version}/opensc-${opensc.version}.tar.gz"
 									 dest="${izpack.staging}/opensc-0.27.1.tar.gz" />
 								<get src="https://cdn.azul.com/zulu/bin/zulu${jdk.zulu.version}-win_x64.zip"
@@ -613,7 +576,7 @@
 							<overWriteReleases>true</overWriteReleases>
 							<overWriteSnapshots>true</overWriteSnapshots>
 							<overWriteIfNewer>true</overWriteIfNewer>
-							<excludeScope>system</excludeScope>
+							<includeScope>runtime</includeScope>
 						</configuration>
 					</execution>
 				</executions>
@@ -645,6 +608,11 @@
 						<groupId>org.codehaus.izpack</groupId>
 						<artifactId>izpack-panel</artifactId>
 						<version>${izpack.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>org.picocontainer</groupId>
+						<artifactId>picocontainer</artifactId>
+						<version>2.15.2</version>
 					</dependency>
 				</dependencies>
 			</plugin>
