@@ -19,6 +19,10 @@ import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -39,6 +43,8 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.io.File;
 import java.util.ResourceBundle;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implementation of {@link UIDisplay} used for standalone mode.
@@ -53,6 +59,7 @@ public class StandaloneUIDisplay implements UIDisplay {
 	private Stage nonBlockingStage;
 	private UIOperation<?> currentBlockingOperation;
 	private OperationFactory operationFactory;
+	private volatile boolean keepBlockingStageOpen;
 	
 	public StandaloneUIDisplay() {
 		this.blockingStage = createStage(true, null);
@@ -64,20 +71,12 @@ public class StandaloneUIDisplay implements UIDisplay {
 		Platform.runLater(() -> {
 			Stage stage = (blockingOperation) ? blockingStage : nonBlockingStage;
 			logger.info("Display " + panel + " in display " + this + " from Thread " + Thread.currentThread().getName());
-			if (!stage.isShowing()) {
-				if(blockingOperation) {
-					stage = blockingStage = createStage(true, null);
-				} else {
-					stage = nonBlockingStage = createStage(false, null);
-				}
-				logger.info("Loading ui " + panel + " is a new Stage " + stage);
-			} else {
-				logger.info("Stage still showing, display " + panel);
-			}
+			logger.info("Loading ui " + panel + " in Stage " + stage);
 			final Scene scene = new Scene(panel);
 			scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
 			stage.setScene(scene);
 			stage.setTitle(StageHelper.getInstance().getTitle());
+			configureDefaultCloseRequest(stage, blockingOperation);
 			Stage finalStage = stage;
 			stage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
 				@Override
@@ -106,28 +105,31 @@ public class StandaloneUIDisplay implements UIDisplay {
 		final Stage newStage = new Stage();
 		newStage.setTitle(title);
 		newStage.setAlwaysOnTop(true);
-		newStage.setOnCloseRequest((e) -> {
-			logger.info("Closing stage " + newStage + " from " + Thread.currentThread().getName());
-			newStage.hide();
+		configureDefaultCloseRequest(newStage, blockingStage);
+		return newStage;
+	}
+
+	private void configureDefaultCloseRequest(Stage stage, boolean blockingStage) {
+		stage.setOnCloseRequest((e) -> {
+			logger.info("Closing stage " + stage + " from " + Thread.currentThread().getName());
+			stage.hide();
 			e.consume();
 
 			if (blockingStage && (currentBlockingOperation != null)) {
 				currentBlockingOperation.signalUserCancel();
 			}
 		});
-		return newStage;
 	}
 
 	@Override
 	public void close(final boolean blockingOperation) {
+		if (blockingOperation && keepBlockingStageOpen) {
+			logger.info("Keep blocking stage open");
+			return;
+		}
 		Platform.runLater(() -> {
 			Stage oldStage = (blockingOperation) ? blockingStage : nonBlockingStage;
-			logger.info("Hide stage " + oldStage + " and create new stage");
-			if(blockingOperation) {
-				blockingStage = createStage(true, null);
-			} else {
-				nonBlockingStage = createStage(false, null);
-			}
+			logger.info("Hide stage " + oldStage);
 			oldStage.hide();
 		});
 	}
@@ -135,6 +137,10 @@ public class StandaloneUIDisplay implements UIDisplay {
 	public <T> void displayAndWaitUIOperation(final UIOperation<T> operation) {
 		display(operation.getRoot(), true);
 		waitForUser(operation);
+	}
+
+	public void setKeepBlockingStageOpen(boolean keepBlockingStageOpen) {
+		this.keepBlockingStageOpen = keepBlockingStageOpen;
 	}
 
 	private <T> void waitForUser(UIOperation<T> operation) {
@@ -224,6 +230,60 @@ public class StandaloneUIDisplay implements UIDisplay {
 		fileChooser.setTitle(ResourceBundle.getBundle("bundles/api").getString("fileChooser.title.openResourceFile"));
 		fileChooser.getExtensionFilters().addAll(toJavaFXExtensionFilters(extensionFilters));
 		return fileChooser.showOpenDialog(blockingStage);
+	}
+
+	public boolean confirmDssClientSignature(String documentTitle, int documentCount) throws InterruptedException {
+		CountDownLatch latch = new CountDownLatch(1);
+		AtomicBoolean accepted = new AtomicBoolean(false);
+		AtomicBoolean completed = new AtomicBoolean(false);
+		Platform.runLater(() -> {
+			VBox root = new VBox(12);
+			root.setPadding(new javafx.geometry.Insets(18));
+			root.setMinWidth(420);
+
+			Label header = new Label("Confirmer la signature electronique");
+			header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+			header.setWrapText(true);
+			Label document = new Label("Document : " + (documentTitle == null ? "" : documentTitle));
+			document.setWrapText(true);
+			Label count = new Label("Nombre de documents : " + documentCount);
+			Label origin = new Label("Provenance : esup-signature");
+
+			Button cancel = new Button("Annuler");
+			Button confirm = new Button("Signer");
+			cancel.setCancelButton(true);
+			confirm.setDefaultButton(true);
+			cancel.setOnAction(event -> finishDssClientConfirmation(false, accepted, completed, latch));
+			confirm.setOnAction(event -> finishDssClientConfirmation(true, accepted, completed, latch));
+
+			HBox actions = new HBox(10, cancel, confirm);
+			actions.setPadding(new javafx.geometry.Insets(8, 0, 0, 0));
+			root.getChildren().addAll(header, document, count, origin, actions);
+
+			Scene scene = new Scene(root);
+			scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
+			blockingStage.setScene(scene);
+			blockingStage.setTitle("Esup-DSS-Client");
+			blockingStage.setOnCloseRequest(event -> {
+				event.consume();
+				finishDssClientConfirmation(false, accepted, completed, latch);
+			});
+			blockingStage.sizeToScene();
+			blockingStage.show();
+			blockingStage.toFront();
+		});
+		latch.await();
+		return accepted.get();
+	}
+
+	private void finishDssClientConfirmation(boolean value, AtomicBoolean accepted, AtomicBoolean completed, CountDownLatch latch) {
+		if (completed.compareAndSet(false, true)) {
+			accepted.set(value);
+			if (!value) {
+				blockingStage.hide();
+			}
+			latch.countDown();
+		}
 	}
 	
 	private FileChooser.ExtensionFilter[] toJavaFXExtensionFilters(ExtensionFilter... extensionFilters) {

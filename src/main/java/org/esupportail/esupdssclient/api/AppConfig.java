@@ -40,6 +40,7 @@ public class AppConfig {
     private static final String ADVANCED_MODE_AVAILABLE = "advanced_mode_available";
     private static final String APPLICATION_NAME = "application_name";
     private static final String DEBUG = "debug";
+    private static final String ENABLE_HTTP_SERVER = "enable_http_server";
     private static final String HTTP_SERVER_CLASS = "http_server_class";
     private static final String API_HOSTNAME = "api_hostname";
     private static final String INSTALL_URL = "install_url";
@@ -95,6 +96,8 @@ public class AppConfig {
     private String apiHostname;
 
     private String httpServerClass;
+
+    private boolean enableHttpServer;
 
     private boolean debug;
 
@@ -159,7 +162,7 @@ public class AppConfig {
             if (versionResourceURL == null) {
                 logger.error("Cannot retrieve application version: version.txt not found");
             } else {
-                this.applicationVersion = IOUtils.toString(versionResourceURL, StandardCharsets.UTF_8);
+                this.applicationVersion = IOUtils.toString(versionResourceURL, StandardCharsets.UTF_8).trim();
             }
         } catch (final IOException e) {
             logger.error("Cannot retrieve application version: " + e.getMessage(), e);
@@ -213,6 +216,14 @@ public class AppConfig {
 
     public void setHttpServerClass(final String httpServerClass) {
         this.httpServerClass = httpServerClass;
+    }
+
+    public boolean isEnableHttpServer() {
+        return enableHttpServer;
+    }
+
+    public void setEnableHttpServer(boolean enableHttpServer) {
+        this.enableHttpServer = enableHttpServer;
     }
 
     public boolean isDebug() {
@@ -458,6 +469,7 @@ public class AppConfig {
         this.setServerUrl(props.getProperty(SERVER_URL, ""));
         this.setInstallUrl(props.getProperty(INSTALL_URL, ""));
         this.setApiHostname(props.getProperty(API_HOSTNAME, "localhost"));
+        this.setEnableHttpServer(Boolean.parseBoolean(props.getProperty(ENABLE_HTTP_SERVER, "false")));
         this.setHttpServerClass(props.getProperty(HTTP_SERVER_CLASS, "org.esupportail.esupdssclientjetty.JettyServer"));
         this.setDebug(Boolean.parseBoolean(props.getProperty(DEBUG, "false")));
         this.setAdvancedModeAvailable(Boolean.parseBoolean(props.getProperty(ADVANCED_MODE_AVAILABLE, "true")));

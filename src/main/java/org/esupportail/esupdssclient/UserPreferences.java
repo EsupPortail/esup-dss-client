@@ -27,6 +27,9 @@ public class UserPreferences {
 	private static final String PROXY_USERNAME = "org.esupportail.esupdssclient.proxyUsername";
 	private static final String PROXY_PASSWORD = "org.esupportail.esupdssclient.proxyPassword";
 	private static final String PROXY_USE_HTTPS = "org.esupportail.esupdssclient.proxyHttps";
+	private static final String DSS_CLIENT_DEVICE_ID = "org.esupportail.esupdssclient.dssClient.deviceId";
+	private static final String DSS_CLIENT_SECRET = "org.esupportail.esupdssclient.dssClient.secret";
+	private static final String DSS_CLIENT_WEBSOCKET_URL = "org.esupportail.esupdssclient.dssClient.websocketUrl";
 
 	private final Preferences prefs;
 
@@ -39,6 +42,9 @@ public class UserPreferences {
 	private Boolean proxyAuthentication;
 	private String proxyUsername;
 	private String proxyPassword;
+	private String dssClientDeviceId;
+	private String dssClientSecret;
+	private String dssClientWebsocketUrl;
 
 	public UserPreferences(final String applicationName) {
 		prefs = Preferences.userRoot().node(applicationName);
@@ -63,6 +69,9 @@ public class UserPreferences {
 		
 		proxyUsername = prefs.get(PROXY_USERNAME, null);
 		proxyPassword = prefs.get(PROXY_PASSWORD, null);
+		dssClientDeviceId = prefs.get(DSS_CLIENT_DEVICE_ID, null);
+		dssClientSecret = prefs.get(DSS_CLIENT_SECRET, null);
+		dssClientWebsocketUrl = prefs.get(DSS_CLIENT_WEBSOCKET_URL, null);
 	}
 
 	public void setDriver(String driver) {
@@ -182,6 +191,41 @@ public class UserPreferences {
 		return proxyPassword;
 	}
 
+	public boolean hasDssClientCredential() {
+		return dssClientDeviceId != null && dssClientSecret != null && dssClientWebsocketUrl != null;
+	}
+
+	public String getDssClientDeviceId() {
+		return dssClientDeviceId;
+	}
+
+	public String getDssClientSecret() {
+		return dssClientSecret;
+	}
+
+	public String getDssClientWebsocketUrl() {
+		return dssClientWebsocketUrl;
+	}
+
+	public void setDssClientCredential(String deviceId, String secret, String websocketUrl) {
+		if(deviceId != null && secret != null && websocketUrl != null) {
+			prefs.put(DSS_CLIENT_DEVICE_ID, deviceId);
+			prefs.put(DSS_CLIENT_SECRET, secret);
+			prefs.put(DSS_CLIENT_WEBSOCKET_URL, websocketUrl);
+		} else {
+			prefs.remove(DSS_CLIENT_DEVICE_ID);
+			prefs.remove(DSS_CLIENT_SECRET);
+			prefs.remove(DSS_CLIENT_WEBSOCKET_URL);
+		}
+		this.dssClientDeviceId = deviceId;
+		this.dssClientSecret = secret;
+		this.dssClientWebsocketUrl = websocketUrl;
+	}
+
+	public void clearDssClientCredential() {
+		setDssClientCredential(null, null, null);
+	}
+
 	public void clear() {
 		try {
 			this.prefs.clear();
@@ -195,5 +239,8 @@ public class UserPreferences {
 		proxyAuthentication = null;
 		proxyUsername = null;
 		proxyPassword = null;
+		dssClientDeviceId = null;
+		dssClientSecret = null;
+		dssClientWebsocketUrl = null;
 	}
 }

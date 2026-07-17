@@ -73,6 +73,10 @@ public class EsupDSSClientLauncher {
 	}
 
 	private static boolean checkAlreadyStarted() throws MalformedURLException {
+		if (!config.isEnableHttpServer()) {
+			logger.info("Legacy local HTTP server is disabled; skipping /nexu-info already-started check.");
+			return false;
+		}
 		for (int port : config.getBindingPorts()) {
 			final URL url = new URL("http://" + config.getBindingIP() + ":" + port + "/nexu-info");
 			final URLConnection connection;

@@ -22,6 +22,8 @@ import org.esupportail.esupdssclient.api.AppConfig;
 import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
 import org.esupportail.esupdssclient.api.plugin.InitializationMessage;
+import org.esupportail.esupdssclient.dssclient.DssClientSetupDialog;
+import org.esupportail.esupdssclient.dssclient.DssClientWebSocketService;
 import org.esupportail.esupdssclient.flow.BasicFlowRegistry;
 import org.esupportail.esupdssclient.flow.Flow;
 import org.esupportail.esupdssclient.flow.FlowRegistry;
@@ -41,6 +43,7 @@ public class EsupDSSClientApplication extends Application {
 	private static final Logger logger = LoggerFactory.getLogger(EsupDSSClientApplication.class.getName());
 
 	private HttpServer server;
+	private DssClientWebSocketService dssClientWebSocketService;
 	
 	private AppConfig getConfig() {
 		return EsupDSSClientLauncher.getConfig();
@@ -61,20 +64,28 @@ public class EsupDSSClientApplication extends Application {
 		
 		final EsupDSSClientAPI api = buildAPI(uiDisplay, operationFactory);
 
-		logger.info("Start Jetty");
+		if (api.getAppConfig().isEnableHttpServer()) {
+			logger.info("Start legacy local HTTP server");
+			server = startHttpServer(api);
+		} else {
+			logger.info("Legacy local HTTP server is disabled.");
+		}
 
-		server = startHttpServer(api);
+		final UserPreferences prefs = new UserPreferences(getConfig().getApplicationName());
+		dssClientWebSocketService = new DssClientWebSocketService(api, prefs, uiDisplay);
+		dssClientWebSocketService.startIfConfigured();
 
 		boolean systrayInitialized = false;
 		if(api.getAppConfig().isEnableSystrayMenu()) {
-			systrayInitialized = new SystrayMenu(operationFactory, api,
-					new UserPreferences(getConfig().getApplicationName())).isInitialized();
+			systrayInitialized = new SystrayMenu(operationFactory, api, prefs, dssClientWebSocketService).isInitialized();
 		} else {
 			logger.info("Systray menu is disabled.");
 		}
 		if (!systrayInitialized) {
-			final UserPreferences prefs = new UserPreferences(getConfig().getApplicationName());
-			new SystrayFallbackWindow().show(primaryStage, api, operationFactory, prefs);
+			new SystrayFallbackWindow().show(primaryStage, api, operationFactory, prefs, dssClientWebSocketService);
+		}
+		if (!prefs.hasDssClientCredential()) {
+			new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientWebSocketService).show();
 		}
 
 		logger.info("Start finished");
@@ -140,6 +151,10 @@ public class EsupDSSClientApplication extends Application {
 	public void stop() throws Exception {
 		logger.info("Stopping application...");
 		try {
+			if(dssClientWebSocketService != null) {
+				dssClientWebSocketService.stop();
+				dssClientWebSocketService = null;
+			}
 			if(server != null) {
 				server.stop();
 				server = null;

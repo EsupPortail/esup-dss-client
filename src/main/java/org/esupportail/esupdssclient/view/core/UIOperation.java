@@ -120,7 +120,6 @@ public class UIOperation<R> implements UIDisplayAwareOperation<R> {
 		String name = getOperationName();
 		logger.info("Notify from " + Thread.currentThread().getName() + " on " + name);
 		notifyResult(new OperationResult<>(result));
-		hide();
 	}
 
 	public final void signalEnd(final OperationStatus operationStatus) {
