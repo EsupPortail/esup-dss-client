@@ -30,7 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Product adapter for {@link OpenSC}.
@@ -146,61 +148,112 @@ public class OpenSCProductAdapter implements ProductAdapter {
 		return products;
 	}
 
-	private static class OpenSCTokenProxy implements SignatureTokenConnection {
+	static class OpenSCTokenProxy implements SignatureTokenConnection {
 
-		private SignatureTokenConnection proxied;
+		private SignatureTokenConnection keyConnection;
+		private SignatureTokenConnection authenticatedConnection;
+		private KeyStore.PasswordProtection authenticatedPassword;
 		private final PasswordInputCallback callback;
+		private final Function<KeyStore.PasswordProtection, SignatureTokenConnection> tokenFactory;
 
 		public OpenSCTokenProxy(PasswordInputCallback callback) {
-			super();
+			this(callback, OpenSCSignatureToken::new);
+		}
+
+		OpenSCTokenProxy(PasswordInputCallback callback,
+				Function<KeyStore.PasswordProtection, SignatureTokenConnection> tokenFactory) {
 			this.callback = callback;
-        }
+			this.tokenFactory = tokenFactory;
+		}
 
 		private void initSignatureTokenConnection() {
-			proxied = new OpenSCSignatureToken(null);
+			if (keyConnection == null) {
+				keyConnection = tokenFactory.apply(null);
+			}
 		}
 
 		private void initSignatureTokenConnectionPassword() {
-			proxied = new OpenSCSignatureToken(new KeyStore.PasswordProtection(callback.getPassword()));
+			if (authenticatedConnection != null) {
+				return;
+			}
+			char[] password = callback.getPassword();
+			KeyStore.PasswordProtection passwordProtection = null;
+			try {
+				passwordProtection = new KeyStore.PasswordProtection(password);
+				authenticatedConnection = tokenFactory.apply(passwordProtection);
+				authenticatedPassword = passwordProtection;
+			} catch (RuntimeException e) {
+				destroyPassword(passwordProtection);
+				throw e;
+			} finally {
+				if (password != null) {
+					Arrays.fill(password, '\0');
+				}
+			}
 		}
 
 		@Override
 		public void close() {
-			final SignatureTokenConnection stc = proxied;
-			// Always nullify proxied even in case of exception when calling close()
-			proxied = null;
-			if(stc != null) {
-				stc.close();
+			SignatureTokenConnection keys = keyConnection;
+			SignatureTokenConnection authenticated = authenticatedConnection;
+			KeyStore.PasswordProtection password = authenticatedPassword;
+			keyConnection = null;
+			authenticatedConnection = null;
+			authenticatedPassword = null;
+			try {
+				if (keys != null) {
+					keys.close();
+				}
+			} finally {
+				try {
+					if (authenticated != null && authenticated != keys) {
+						authenticated.close();
+					}
+				} finally {
+					destroyPassword(password);
+				}
+			}
+		}
+
+		private void destroyPassword(KeyStore.PasswordProtection password) {
+			if (password != null) {
+				try {
+					password.destroy();
+				} catch (Exception e) {
+					logger.warn("Unable to clear OpenSC password protection", e);
+				}
 			}
 		}
 
 		@Override
 		public List<DSSPrivateKeyEntry> getKeys() throws DSSException {
 			initSignatureTokenConnection();
-			return proxied.getKeys();
+			return keyConnection.getKeys();
 		}
 
 		@Override
 		public SignatureValue sign(ToBeSigned toBeSigned, DigestAlgorithm digestAlgorithm, DSSPrivateKeyEntry keyEntry)
 				throws DSSException {
 			initSignatureTokenConnectionPassword();
-			return proxied.sign(toBeSigned, digestAlgorithm, keyEntry);
+			return authenticatedConnection.sign(toBeSigned, digestAlgorithm, keyEntry);
 		}
 
 		@Override
 		public SignatureValue sign(ToBeSigned toBeSigned, SignatureAlgorithm signatureAlgorithm, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
 			initSignatureTokenConnectionPassword();
-			return proxied.sign(toBeSigned, signatureAlgorithm, dssPrivateKeyEntry);
+			return authenticatedConnection.sign(toBeSigned, signatureAlgorithm, dssPrivateKeyEntry);
 		}
 
 		@Override
 		public SignatureValue signDigest(Digest digest, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
-			return null;
+			initSignatureTokenConnectionPassword();
+			return authenticatedConnection.signDigest(digest, dssPrivateKeyEntry);
 		}
 
 		@Override
 		public SignatureValue signDigest(Digest digest, SignatureAlgorithm signatureAlgorithm, DSSPrivateKeyEntry dssPrivateKeyEntry) throws DSSException {
-			return null;
+			initSignatureTokenConnectionPassword();
+			return authenticatedConnection.signDigest(digest, signatureAlgorithm, dssPrivateKeyEntry);
 		}
 	}
 }

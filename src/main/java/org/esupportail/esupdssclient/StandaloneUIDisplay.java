@@ -19,6 +19,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -85,6 +86,9 @@ public class StandaloneUIDisplay implements UIDisplay {
 			BorderPane container = useBlockingWindow ? blockingContainer : nonBlockingContainer;
 			logger.info("Display " + panel + " in display " + this + " from Thread " + Thread.currentThread().getName());
 			logger.info("Loading ui " + panel + " in Stage " + stage);
+			if (dssClientSigningSessionActive) {
+				configureDssClientPrimaryAction(panel);
+			}
 			container.setCenter(panel);
 			stage.setTitle(StageHelper.getInstance().getTitle());
 			configureDefaultCloseRequest(stage, useBlockingWindow);
@@ -216,6 +220,43 @@ public class StandaloneUIDisplay implements UIDisplay {
 		return stepper;
 	}
 
+	private void configureDssClientPrimaryAction(Parent panel) {
+		if (!(panel instanceof BorderPane borderPane) || borderPane.getBottom() == null) {
+			return;
+		}
+		Button primaryAction = findPrimaryAction(borderPane.getBottom());
+		if (primaryAction == null) {
+			return;
+		}
+		primaryAction.setText(dssClientSigningStep.getButtonLabel());
+		primaryAction.getStyleClass().removeAll("btn-default", "btn-secondary", "btn-primary", "btn-danger", "btn-info");
+		if (!primaryAction.getStyleClass().contains("btn-success")) {
+			primaryAction.getStyleClass().add("btn-success");
+		}
+		if (primaryAction.getParent() instanceof HBox actions) {
+			actions.setAlignment(Pos.CENTER_RIGHT);
+		}
+	}
+
+	private Button findPrimaryAction(Node node) {
+		if (node instanceof Button button && isDssClientPrimaryAction(button.getId())) {
+			return button;
+		}
+		if (node instanceof Parent parent) {
+			for (Node child : parent.getChildrenUnmodifiable()) {
+				Button button = findPrimaryAction(child);
+				if (button != null) {
+					return button;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean isDssClientPrimaryAction(String buttonId) {
+		return "select".equals(buttonId) || "ok".equals(buttonId) || "store".equals(buttonId);
+	}
+
 	private <T> void waitForUser(UIOperation<T> operation) {
 		try {
 			logger.info("Wait on Thread " + Thread.currentThread().getName());
@@ -310,9 +351,10 @@ public class StandaloneUIDisplay implements UIDisplay {
 		AtomicBoolean accepted = new AtomicBoolean(false);
 		AtomicBoolean completed = new AtomicBoolean(false);
 		Platform.runLater(() -> {
-			VBox root = new VBox(12);
-			root.setPadding(new javafx.geometry.Insets(18));
+			BorderPane root = new BorderPane();
 			root.setMinWidth(420);
+			VBox content = new VBox(12);
+			content.setPadding(new Insets(18));
 
 			Label header = new Label("Confirmer la signature electronique");
 			header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
@@ -323,15 +365,20 @@ public class StandaloneUIDisplay implements UIDisplay {
 			provenance.setWrapText(true);
 
 			Button cancel = new Button("Annuler");
-			Button confirm = new Button("Signer");
+			Button confirm = new Button(DssClientSigningStep.CONFIRMATION.getButtonLabel());
+			cancel.getStyleClass().add("btn-secondary");
+			confirm.getStyleClass().add("btn-success");
 			cancel.setCancelButton(true);
 			confirm.setDefaultButton(true);
 			cancel.setOnAction(event -> finishDssClientConfirmation(false, accepted, completed, latch));
 			confirm.setOnAction(event -> finishDssClientConfirmation(true, accepted, completed, latch));
 
 			HBox actions = new HBox(10, cancel, confirm);
-			actions.setPadding(new javafx.geometry.Insets(8, 0, 0, 0));
-			root.getChildren().addAll(header, document, provenance, actions);
+			actions.getStyleClass().add("btn-container");
+			actions.setAlignment(Pos.CENTER_RIGHT);
+			content.getChildren().addAll(header, document, provenance);
+			root.setCenter(content);
+			root.setBottom(actions);
 
 			blockingContainer.setCenter(root);
 			blockingStage.setTitle("Esup-DSS-Client");
@@ -357,18 +404,24 @@ public class StandaloneUIDisplay implements UIDisplay {
 	}
 
 	public enum DssClientSigningStep {
-		CERTIFICATE(1),
-		CONFIRMATION(2),
-		SIGNATURE(3);
+		CERTIFICATE(1, "Suivant"),
+		CONFIRMATION(2, "Suivant"),
+		SIGNATURE(3, "Terminer");
 
 		private final int order;
+		private final String buttonLabel;
 
-		DssClientSigningStep(int order) {
+		DssClientSigningStep(int order, String buttonLabel) {
 			this.order = order;
+			this.buttonLabel = buttonLabel;
 		}
 
 		public int getOrder() {
 			return order;
+		}
+
+		public String getButtonLabel() {
+			return buttonLabel;
 		}
 	}
 	

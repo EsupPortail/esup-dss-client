@@ -20,6 +20,7 @@ public class DssClientPromptWindow {
 			Label messageLabel = new Label(message);
 			messageLabel.setWrapText(true);
 			Button close = new Button("Fermer");
+			close.getStyleClass().add("btn-secondary");
 			close.setDefaultButton(true);
 			close.setOnAction(event -> stage.hide());
 			stage.setOnCloseRequest(event -> {
@@ -61,6 +62,7 @@ public class DssClientPromptWindow {
 		Scene scene = stage.getScene();
 		if (scene == null) {
 			scene = new Scene(root);
+			scene.getStylesheets().add(getClass().getResource("/styles/esupdssclient.css").toExternalForm());
 			stage.setScene(scene);
 		} else {
 			scene.setRoot(root);

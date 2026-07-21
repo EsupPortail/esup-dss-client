@@ -20,6 +20,8 @@ public interface FlowRegistry {
 
 	static final String SIGNATURE_FLOW = "signature";
 
+	static final String SIGNATURE_BATCH_FLOW = "signatureBatch";
+
 	static final String CERTIFICATE_FLOW = "certificate";
 
 	static final String GET_IDENTITY_INFO_FLOW = "getIdentityInfo";

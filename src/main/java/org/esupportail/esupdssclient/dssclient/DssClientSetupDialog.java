@@ -46,6 +46,9 @@ public class DssClientSetupDialog {
 		dialog.setHeaderText("Association a esup-signature");
 		dialog.setGraphic(null);
 		dialog.setContentText("Collez l'URL d'association fournie dans votre profil esup-signature :");
+		applyButtonStyles(dialog.getDialogPane());
+		dialog.getDialogPane().lookupButton(ButtonType.OK).getStyleClass().add("btn-primary");
+		dialog.getDialogPane().lookupButton(ButtonType.CANCEL).getStyleClass().add("btn-secondary");
 		Optional<String> value = dialog.showAndWait();
 		Optional<String> pairingUrl = value.filter(text -> !text.isBlank());
 		if (pairingUrl.isPresent()) {
@@ -62,6 +65,9 @@ public class DssClientSetupDialog {
 		dialog.setTitle("Esup-DSS-Client");
 		dialog.setHeaderText("Association a esup-signature");
 		dialog.setGraphic(null);
+		applyButtonStyles(dialog.getDialogPane());
+		dialog.getDialogPane().lookupButton(dissociate).getStyleClass().add("btn-danger");
+		dialog.getDialogPane().lookupButton(ButtonType.CLOSE).getStyleClass().add("btn-secondary");
 		Optional<ButtonType> result = dialog.showAndWait();
 		if (result.isPresent() && result.get() == dissociate) {
 			webSocketService.stop();
@@ -83,5 +89,9 @@ public class DssClientSetupDialog {
 				Platform.runLater(() -> showing = false);
 			}
 		});
+	}
+
+	private void applyButtonStyles(javafx.scene.control.DialogPane dialogPane) {
+		dialogPane.getStylesheets().add(getClass().getResource("/styles/esupdssclient.css").toExternalForm());
 	}
 }

@@ -42,6 +42,9 @@ public class ManageKeystoresController extends AbstractUIOperationController<Voi
 	private Button remove;
 
 	@FXML
+	private Button close;
+
+	@FXML
 	private TableView<ConfiguredKeystore> keystoresTable;
 	
 	@FXML
@@ -85,6 +88,7 @@ public class ManageKeystoresController extends AbstractUIOperationController<Voi
 		remove.setOnAction((event) -> {
 			observableKeystores.remove(keystoresTable.getSelectionModel().getSelectedItem());
 		});
+		close.setOnAction(event -> signalEnd(null));
 		
 		observableKeystores.addListener((ListChangeListener<ConfiguredKeystore>)(c) -> {
 			while(c.next()) {

@@ -22,8 +22,8 @@
     <bottom>
         <HBox styleClass="btn-container" BorderPane.alignment="CENTER">
             <children>
-            	<Button fx:id="back" mnemonicParsing="false" styleClass="btn-default" text="%button.back" />
-                <Button fx:id="cancel" mnemonicParsing="false" styleClass="btn-default" text="%button.cancel" />
+				<Button fx:id="back" mnemonicParsing="false" styleClass="btn-secondary" text="%button.back" />
+                <Button fx:id="cancel" mnemonicParsing="false" styleClass="btn-secondary" text="%button.cancel" />
                 <Button fx:id="select" mnemonicParsing="false" styleClass="btn-primary" text="%button.select" />
             </children>
         </HBox>

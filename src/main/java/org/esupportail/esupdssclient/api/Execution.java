@@ -31,6 +31,8 @@ public class Execution<T> {
 
 	private final String errorMessage;
 
+	private Integer failedIndex;
+
 	private Feedback feedback;
 
 	public Execution(T response) {
@@ -69,6 +71,14 @@ public class Execution<T> {
 
 	public void setFeedback(Feedback feedback) {
 		this.feedback = feedback;
+	}
+
+	public Integer getFailedIndex() {
+		return failedIndex;
+	}
+
+	public void setFailedIndex(Integer failedIndex) {
+		this.failedIndex = failedIndex;
 	}
 
 }

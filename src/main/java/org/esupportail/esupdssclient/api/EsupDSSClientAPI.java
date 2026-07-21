@@ -44,6 +44,8 @@ public interface EsupDSSClientAPI {
 
 	Execution<SignatureResponse> sign(SignatureRequest request);
 
+	Execution<SignatureBatchResponse> signBatch(SignatureBatchRequest request);
+
 	Execution<GetIdentityInfoResponse> getIdentityInfo(GetIdentityInfoRequest request);
 	
 	Execution<AuthenticateResponse> authenticate(AuthenticateRequest request);

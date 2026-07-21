@@ -1,6 +1,7 @@
 package org.esupportail.esupdssclient.dssclient;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
@@ -22,9 +23,11 @@ import java.net.http.WebSocketHandshakeException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -272,12 +275,14 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		}
 	}
 
-	private void handleSignRequest(JsonObject message) {
+	void handleSignRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
 		DocumentContext documentContext = documentContext(message);
 		try {
-			logger.info("Processing sign_request correlationId={}, documentName={}, origin={}",
-					correlationId, documentContext.documentName(), documentContext.origin());
+			boolean batchRequest = message.has("dataToSign") && message.get("dataToSign").isJsonArray();
+			List<ToBeSigned> valuesToSign = parseDataToSign(message);
+			logger.info("Processing sign_request correlationId={}, documentName={}, origin={}, signatureCount={}",
+					correlationId, documentContext.documentName(), documentContext.origin(), valuesToSign.size());
 			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.CONFIRMATION);
 			if (!confirmSignature(documentContext.documentName(), documentContext.origin())) {
 				logger.info("User cancelled sign_request correlationId={}", correlationId);
@@ -288,29 +293,62 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			if (lastCertificate == null) {
 				throw new IllegalStateException("Aucun certificat n'a ete selectionne");
 			}
-			SignatureRequest request = new SignatureRequest();
-			request.setTokenId(lastCertificate.getTokenId());
-			request.setKeyId(lastCertificate.getKeyId());
-			ToBeSigned toBeSigned = new ToBeSigned();
-			toBeSigned.setBytes(Base64.getDecoder().decode(getString(message, "dataToSign")));
-			request.setToBeSigned(toBeSigned);
-			request.setDigestAlgorithm(DigestAlgorithm.forName(getString(message, "digestAlgo"), DigestAlgorithm.SHA256));
-
 			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.SIGNATURE);
-			Execution<SignatureResponse> execution = api.sign(request);
-			if (!execution.isSuccess()) {
-				logger.warn("Signature request failed with operation error: {}", execution.getErrorMessage());
-				sendError(correlationId, execution.getError(), execution.getErrorMessage());
-				finishWssUiFlow();
-				return;
+			DigestAlgorithm digestAlgorithm = DigestAlgorithm.forName(getString(message, "digestAlgo"), DigestAlgorithm.SHA256);
+			if (batchRequest) {
+				SignatureBatchRequest request = new SignatureBatchRequest();
+				request.setTokenId(lastCertificate.getTokenId());
+				request.setKeyId(lastCertificate.getKeyId());
+				request.setValuesToSign(valuesToSign);
+				request.setDigestAlgorithm(digestAlgorithm);
+				request.setProgressListener((completed, total) -> send(Map.of(
+						"type", "sign_progress",
+						"correlationId", correlationId,
+						"completed", completed,
+						"total", total
+				)));
+
+				Execution<SignatureBatchResponse> execution = api.signBatch(request);
+				if (!execution.isSuccess()) {
+					logger.warn("Batch signature request failed at index={} with operation error: {}",
+							execution.getFailedIndex(), execution.getErrorMessage());
+					sendError(correlationId, execution.getError(), execution.getErrorMessage(), execution.getFailedIndex());
+					finishWssUiFlow();
+					return;
+				}
+				List<String> signatureValues = execution.getResponse().getSignatureValues().stream()
+						.map(value -> Base64.getEncoder().encodeToString(value.getValue()))
+						.toList();
+				logger.info("Batch signature request completed correlationId={}, signatureCount={}",
+						correlationId, signatureValues.size());
+				send(Map.of(
+						"type", "sign_response",
+						"correlationId", correlationId,
+						"signatureValues", signatureValues
+				));
+			} else {
+				SignatureRequest request = new SignatureRequest();
+				request.setTokenId(lastCertificate.getTokenId());
+				request.setKeyId(lastCertificate.getKeyId());
+				request.setToBeSigned(valuesToSign.get(0));
+				request.setDigestAlgorithm(digestAlgorithm);
+
+				Execution<SignatureResponse> execution = api.sign(request);
+				if (!execution.isSuccess()) {
+					logger.warn("Signature request failed with operation error: {}", execution.getErrorMessage());
+					sendError(correlationId, execution.getError(), execution.getErrorMessage());
+					finishWssUiFlow();
+					return;
+				}
+				String signatureValue = Base64.getEncoder().encodeToString(execution.getResponse().getSignatureValue());
+				logger.info("Signature request completed correlationId={}, signatureLength={}",
+						correlationId, execution.getResponse().getSignatureValue().length);
+				send(Map.of(
+						"type", "sign_response",
+						"correlationId", correlationId,
+						"signatureValue", signatureValue
+				));
 			}
-			logger.info("Signature request completed correlationId={}, signatureLength={}",
-					correlationId, execution.getResponse().getSignatureValue().length);
-			send(Map.of(
-					"type", "sign_response",
-					"correlationId", correlationId,
-					"signatureValue", Base64.getEncoder().encodeToString(execution.getResponse().getSignatureValue())
-			));
 			finishWssUiFlow();
 		} catch (Exception e) {
 			logger.error("Signature request failed", e);
@@ -349,14 +387,21 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	private void sendError(String correlationId, String errorCode, String errorMessage) {
+		sendError(correlationId, errorCode, errorMessage, null);
+	}
+
+	private void sendError(String correlationId, String errorCode, String errorMessage, Integer failedIndex) {
 		logger.warn("Sending DSS client error correlationId={}, code={}, message={}", correlationId, errorCode, errorMessage);
-		Map<String, String> response = new LinkedHashMap<>();
+		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("type", "error");
 		if (correlationId != null) {
 			response.put("correlationId", correlationId);
 		}
 		if (errorCode != null && !errorCode.isBlank()) {
 			response.put("errorCode", errorCode);
+		}
+		if (failedIndex != null) {
+			response.put("failedIndex", failedIndex);
 		}
 		response.put("errorMessage", errorMessage == null ? "Erreur Esup-DSS-Client" : errorMessage);
 		send(response);
@@ -417,6 +462,34 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private String getString(JsonObject object, String field) {
 		return object.has(field) && !object.get(field).isJsonNull() ? object.get(field).getAsString() : null;
+	}
+
+	static List<ToBeSigned> parseDataToSign(JsonObject message) {
+		JsonElement dataToSign = message.get("dataToSign");
+		if (dataToSign == null || dataToSign.isJsonNull()) {
+			throw new IllegalArgumentException("dataToSign est obligatoire");
+		}
+
+		List<JsonElement> encodedValues = new ArrayList<>();
+		if (dataToSign.isJsonArray()) {
+			dataToSign.getAsJsonArray().forEach(encodedValues::add);
+		} else {
+			encodedValues.add(dataToSign);
+		}
+		if (encodedValues.isEmpty()) {
+			throw new IllegalArgumentException("dataToSign ne peut pas etre une liste vide");
+		}
+
+		List<ToBeSigned> valuesToSign = new ArrayList<>(encodedValues.size());
+		for (JsonElement encodedValue : encodedValues) {
+			if (encodedValue == null || !encodedValue.isJsonPrimitive() || !encodedValue.getAsJsonPrimitive().isString()) {
+				throw new IllegalArgumentException("Chaque dataToSign doit etre une chaine Base64");
+			}
+			ToBeSigned toBeSigned = new ToBeSigned();
+			toBeSigned.setBytes(Base64.getDecoder().decode(encodedValue.getAsString()));
+			valuesToSign.add(toBeSigned);
+		}
+		return valuesToSign;
 	}
 
 	private record DocumentContext(String documentName, String origin) {}

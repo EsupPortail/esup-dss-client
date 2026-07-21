@@ -138,9 +138,7 @@ public class InternalAPI implements EsupDSSClientAPI {
 						currentTask.cancel(true);
 					}
 
-					task = executor.submit(() -> {
-						return flow.execute(this, request);
-					});
+					task = executor.submit(() -> flow.execute(this, request));
 					currentTask = task;
 				}
 
@@ -153,8 +151,12 @@ public class InternalAPI implements EsupDSSClientAPI {
 				resp = new Execution<O>(CoreOperationStatus.NO_RESPONSE);
 			}
 			return resp;
-		}  catch (Exception e) {
+		} catch (Exception e) {
 			resp = new Execution<O>(BasicOperationStatus.EXCEPTION);
+			SignatureBatchException batchException = findBatchException(e);
+			if (batchException != null) {
+				resp.setFailedIndex(batchException.getFailedIndex());
+			}
 			logger.error("Cannot execute request", e);
 			final Feedback feedback = new Feedback(e);
 			resp.setFeedback(feedback);
@@ -172,6 +174,17 @@ public class InternalAPI implements EsupDSSClientAPI {
 		}
 	}
 
+	private SignatureBatchException findBatchException(Throwable error) {
+		Throwable current = error;
+		while (current != null) {
+			if (current instanceof SignatureBatchException batchException) {
+				return batchException;
+			}
+			current = current.getCause();
+		}
+		return null;
+	}
+
 	@Override
 	public Execution<GetCertificateResponse> getCertificate(GetCertificateRequest request) {
 		Flow<GetCertificateRequest, GetCertificateResponse> flow =
@@ -184,6 +197,14 @@ public class InternalAPI implements EsupDSSClientAPI {
 	public Execution<SignatureResponse> sign(SignatureRequest request) {
 		Flow<SignatureRequest, SignatureResponse> flow =
 				flowRegistry.getFlow(FlowRegistry.SIGNATURE_FLOW, display, this);
+		flow.setOperationFactory(operationFactory);
+		return executeRequest(flow, request);
+	}
+
+	@Override
+	public Execution<SignatureBatchResponse> signBatch(SignatureBatchRequest request) {
+		Flow<SignatureBatchRequest, SignatureBatchResponse> flow =
+				flowRegistry.getFlow(FlowRegistry.SIGNATURE_BATCH_FLOW, display, this);
 		flow.setOperationFactory(operationFactory);
 		return executeRequest(flow, request);
 	}

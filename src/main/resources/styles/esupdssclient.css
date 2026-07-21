@@ -18,17 +18,30 @@
 }
 
 Button {
-	
-    -fx-background-radius: 5,5;
+
+    -fx-background-color: #6c757d;
+    -fx-background-insets: 0;
+    -fx-background-radius: 4;
     -fx-padding: 5 10 5 10;
     -fx-font-size: 14px;
+    -fx-border-width: 0;
+    -fx-border-radius: 4;
+    -fx-text-alignment: center;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+}
 
-    -fx-border:2;
-    -fx-border-radius:5;
-    -fx-border-color:black;
-    
-    -fx-text-alignment:center;
-	
+Button:hover {
+    -fx-background-color: #5c636a;
+}
+
+Button:pressed {
+    -fx-background-color: #565e64;
+}
+
+Button:disabled {
+    -fx-opacity: 0.65;
+    -fx-cursor: default;
 }
 
 RadioButton {
@@ -73,6 +86,10 @@ RadioButton {
 
 }
 
+.btn-success:pressed {
+    -fx-background-color: #146c43;
+}
+
 .btn-success:hover {
 
     -fx-background-color: #157347;
@@ -93,6 +110,11 @@ RadioButton {
 
 }
 
+.btn-primary:pressed {
+    -fx-background-color: #0a53be;
+}
+
+.btn-default,
 .btn-secondary {
 
     -fx-background-color: #6c757d;
@@ -101,10 +123,30 @@ RadioButton {
 
 }
 
+.btn-default:hover,
 .btn-secondary:hover {
 
     -fx-background-color: #51585e;
 
+}
+
+.btn-default:pressed,
+.btn-secondary:pressed {
+    -fx-background-color: #565e64;
+}
+
+.btn-info {
+    -fx-background-color: #0dcaf0;
+    -fx-text-fill: #000000;
+    -fx-border-color: rgba(255, 255, 255, 0);
+}
+
+.btn-info:hover {
+    -fx-background-color: #31d2f2;
+}
+
+.btn-info:pressed {
+    -fx-background-color: #3dd5f3;
 }
 
 .btn-danger {
@@ -118,6 +160,10 @@ RadioButton {
 .btn-danger:hover {
     -fx-background-color: #a52834;
 
+}
+
+.btn-danger:pressed {
+    -fx-background-color: #b02a37;
 }
 
 .text-area .content{
