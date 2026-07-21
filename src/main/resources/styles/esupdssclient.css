@@ -186,3 +186,7 @@ ScrollPane {
 .fallback-message {
     -fx-text-alignment: center;
 }
+
+.dss-client-progress {
+    -fx-progress-color: #198754;
+}

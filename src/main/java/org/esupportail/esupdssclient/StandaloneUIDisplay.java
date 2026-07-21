@@ -15,6 +15,7 @@ package org.esupportail.esupdssclient;
 
 import eu.europa.esig.dss.token.PasswordInputCallback;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -24,6 +25,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -235,7 +237,31 @@ public class StandaloneUIDisplay implements UIDisplay {
 		}
 		if (primaryAction.getParent() instanceof HBox actions) {
 			actions.setAlignment(Pos.CENTER_RIGHT);
+			installDssClientProgressFeedback(primaryAction, actions);
 		}
+	}
+
+	private void installDssClientProgressFeedback(Button primaryAction, HBox actions) {
+		AtomicBoolean processing = new AtomicBoolean(false);
+		primaryAction.addEventFilter(ActionEvent.ACTION, event -> {
+			if (!processing.compareAndSet(false, true)) {
+				event.consume();
+				return;
+			}
+			if (!primaryAction.disableProperty().isBound()) {
+				primaryAction.setDisable(true);
+			}
+			ProgressIndicator progress = new ProgressIndicator();
+			progress.getStyleClass().add("dss-client-progress");
+			progress.setPrefSize(20, 20);
+			progress.setMinSize(20, 20);
+			progress.setMaxSize(20, 20);
+			progress.setAccessibleText("Traitement en cours");
+			int buttonIndex = actions.getChildren().indexOf(primaryAction);
+			if (buttonIndex >= 0) {
+				actions.getChildren().add(buttonIndex, progress);
+			}
+		});
 	}
 
 	private Button findPrimaryAction(Node node) {
@@ -376,6 +402,7 @@ public class StandaloneUIDisplay implements UIDisplay {
 			HBox actions = new HBox(10, cancel, confirm);
 			actions.getStyleClass().add("btn-container");
 			actions.setAlignment(Pos.CENTER_RIGHT);
+			installDssClientProgressFeedback(confirm, actions);
 			content.getChildren().addAll(header, document, provenance);
 			root.setCenter(content);
 			root.setBottom(actions);
