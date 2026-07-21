@@ -42,7 +42,6 @@ public class EsupDSSClientApplication extends Application {
 
 	private static final Logger logger = LoggerFactory.getLogger(EsupDSSClientApplication.class.getName());
 
-	private HttpServer server;
 	private DssClientWebSocketService dssClientWebSocketService;
 	
 	private AppConfig getConfig() {
@@ -63,13 +62,6 @@ public class EsupDSSClientApplication extends Application {
 		uiDisplay.setOperationFactory(operationFactory);
 		
 		final EsupDSSClientAPI api = buildAPI(uiDisplay, operationFactory);
-
-		if (api.getAppConfig().isEnableHttpServer()) {
-			logger.info("Start legacy local HTTP server");
-			server = startHttpServer(api);
-		} else {
-			logger.info("Legacy local HTTP server is disabled.");
-		}
 
 		final UserPreferences prefs = new UserPreferences(getConfig().getApplicationName());
 		dssClientWebSocketService = new DssClientWebSocketService(api, prefs, uiDisplay);
@@ -115,38 +107,6 @@ public class EsupDSSClientApplication extends Application {
 		return new BasicFlowRegistry();
 	}
 	
-	private HttpServer startHttpServer(EsupDSSClientAPI api) throws Exception {
-		final HttpServer server = buildHttpServer();
-		server.setConfig(api);
-		try {
-			server.start();
-		} catch(Exception e) {
-			try {
-				server.stop();
-			} catch(Exception e1) {}
-			throw e;
-		}
-		return server;
-	}
-
-	/**
-	 * Build the HTTP Server for the platform
-	 * 
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	private HttpServer buildHttpServer() {
-		try {
-			Class<HttpServer> cla = (Class<HttpServer>) Class.forName(getConfig().getHttpServerClass());
-			logger.info("HttpServer is " + getConfig().getHttpServerClass());
-			HttpServer server = cla.getDeclaredConstructor().newInstance();
-			return server;
-		} catch (Exception e) {
-			logger.error("Cannot instanciate Http Server " + getConfig().getHttpServerClass(), e);
-			throw new RuntimeException("Cannot instanciate Http Server");
-		}
-	}
-
 	@Override
 	public void stop() throws Exception {
 		logger.info("Stopping application...");
@@ -154,10 +114,6 @@ public class EsupDSSClientApplication extends Application {
 			if(dssClientWebSocketService != null) {
 				dssClientWebSocketService.stop();
 				dssClientWebSocketService = null;
-			}
-			if(server != null) {
-				server.stop();
-				server = null;
 			}
 		} catch (final Exception e) {
 			logger.error("Cannot stop server", e);

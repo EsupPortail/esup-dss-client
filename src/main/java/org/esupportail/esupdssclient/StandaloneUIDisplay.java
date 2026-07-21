@@ -16,11 +16,14 @@ package org.esupportail.esupdssclient;
 import eu.europa.esig.dss.token.PasswordInputCallback;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -43,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.io.File;
 import java.util.ResourceBundle;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -54,59 +58,76 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class StandaloneUIDisplay implements UIDisplay {
 
 	private static final Logger logger = LoggerFactory.getLogger(StandaloneUIDisplay.class.getName());
+	private static final double DSS_CLIENT_SIGNING_WIDTH = 700;
+	private static final double DSS_CLIENT_SIGNING_HEIGHT = 500;
 
 	private Stage blockingStage;
 	private Stage nonBlockingStage;
+	private BorderPane blockingContainer;
+	private BorderPane nonBlockingContainer;
 	private UIOperation<?> currentBlockingOperation;
 	private OperationFactory operationFactory;
-	private volatile boolean keepBlockingStageOpen;
+	private volatile boolean dssClientSigningSessionActive;
+	private volatile DssClientSigningStep dssClientSigningStep;
 	
 	public StandaloneUIDisplay() {
-		this.blockingStage = createStage(true, null);
-		this.nonBlockingStage = createStage(false, null);
+		this.blockingContainer = new BorderPane();
+		this.nonBlockingContainer = new BorderPane();
+		this.blockingStage = createStage(true, null, blockingContainer);
+		this.nonBlockingStage = createStage(false, null, nonBlockingContainer);
 	}
 
 	private void display(Parent panel, boolean blockingOperation) {
 		logger.info("Display " + panel + " in display " + this + " from Thread " + Thread.currentThread().getName());
 		Platform.runLater(() -> {
-			Stage stage = (blockingOperation) ? blockingStage : nonBlockingStage;
+			boolean useBlockingWindow = blockingOperation || dssClientSigningSessionActive;
+			Stage stage = useBlockingWindow ? blockingStage : nonBlockingStage;
+			BorderPane container = useBlockingWindow ? blockingContainer : nonBlockingContainer;
 			logger.info("Display " + panel + " in display " + this + " from Thread " + Thread.currentThread().getName());
 			logger.info("Loading ui " + panel + " in Stage " + stage);
-			final Scene scene = new Scene(panel);
-			scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
-			stage.setScene(scene);
+			container.setCenter(panel);
 			stage.setTitle(StageHelper.getInstance().getTitle());
-			configureDefaultCloseRequest(stage, blockingOperation);
-			Stage finalStage = stage;
-			stage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
-				@Override
-				public void handle(WindowEvent event) {
-					Screen currentScreen = Screen.getPrimary();
-					PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-					int mouseX = (int) pointerInfo.getLocation().getX();
-					int mouseY = (int) pointerInfo.getLocation().getY();
-					for (Screen screen : Screen.getScreens()) {
-						Rectangle2D bounds = screen.getBounds();
-						if (bounds.contains(mouseX, mouseY)) {
-							currentScreen = screen;
-						}
-					}
-					Rectangle2D screenBounds = currentScreen.getVisualBounds();
-					finalStage.setX(((screenBounds.getWidth() - finalStage.getWidth()) / 2) + screenBounds.getMinX());
-					finalStage.setY((screenBounds.getHeight() - finalStage.getHeight()) / 2);
-				}
-			});
+			configureDefaultCloseRequest(stage, useBlockingWindow);
+			if (!dssClientSigningSessionActive) {
+				stage.sizeToScene();
+			}
 			stage.show();
+			stage.toFront();
 			StageHelper.getInstance().setTitle("", null);
 		});
 	}
 
-	private Stage createStage(final boolean blockingStage, String title) {
+	private Stage createStage(final boolean blockingStage, String title, BorderPane container) {
 		final Stage newStage = new Stage();
 		newStage.setTitle(title);
 		newStage.setAlwaysOnTop(true);
+		Scene scene = new Scene(container);
+		scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
+		newStage.setScene(scene);
 		configureDefaultCloseRequest(newStage, blockingStage);
+		newStage.setOnShown(new EventHandler<WindowEvent>() {
+			@Override
+			public void handle(WindowEvent event) {
+				centerOnPointerScreen(newStage);
+			}
+		});
 		return newStage;
+	}
+
+	private void centerOnPointerScreen(Stage stage) {
+		Screen currentScreen = Screen.getPrimary();
+		PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+		int mouseX = (int) pointerInfo.getLocation().getX();
+		int mouseY = (int) pointerInfo.getLocation().getY();
+		for (Screen screen : Screen.getScreens()) {
+			Rectangle2D bounds = screen.getBounds();
+			if (bounds.contains(mouseX, mouseY)) {
+				currentScreen = screen;
+			}
+		}
+		Rectangle2D screenBounds = currentScreen.getVisualBounds();
+		stage.setX(((screenBounds.getWidth() - stage.getWidth()) / 2) + screenBounds.getMinX());
+		stage.setY((screenBounds.getHeight() - stage.getHeight()) / 2);
 	}
 
 	private void configureDefaultCloseRequest(Stage stage, boolean blockingStage) {
@@ -123,8 +144,8 @@ public class StandaloneUIDisplay implements UIDisplay {
 
 	@Override
 	public void close(final boolean blockingOperation) {
-		if (blockingOperation && keepBlockingStageOpen) {
-			logger.info("Keep blocking stage open");
+		if (dssClientSigningSessionActive) {
+			logger.info("Keep DSS client signing window open while its session is active");
 			return;
 		}
 		Platform.runLater(() -> {
@@ -139,8 +160,60 @@ public class StandaloneUIDisplay implements UIDisplay {
 		waitForUser(operation);
 	}
 
-	public void setKeepBlockingStageOpen(boolean keepBlockingStageOpen) {
-		this.keepBlockingStageOpen = keepBlockingStageOpen;
+	/**
+	 * Starts a WSS signing session. All subsequent DSS UI operations reuse the
+	 * blocking stage until {@link #finishDssClientSigningSession()} is called.
+	 */
+	public void startDssClientSigningSession() {
+		dssClientSigningSessionActive = true;
+		Platform.runLater(() -> {
+			blockingStage.setWidth(DSS_CLIENT_SIGNING_WIDTH);
+			blockingStage.setHeight(DSS_CLIENT_SIGNING_HEIGHT);
+			blockingStage.setResizable(false);
+		});
+		setDssClientSigningStep(DssClientSigningStep.CERTIFICATE);
+	}
+
+	public void setDssClientSigningStep(DssClientSigningStep step) {
+		dssClientSigningStep = step;
+		if (!dssClientSigningSessionActive) {
+			return;
+		}
+		Platform.runLater(() -> {
+			if (dssClientSigningSessionActive) {
+				blockingContainer.setTop(createDssClientStepper(dssClientSigningStep));
+			}
+		});
+	}
+
+	public void finishDssClientSigningSession() {
+		dssClientSigningSessionActive = false;
+		dssClientSigningStep = null;
+		Platform.runLater(() -> {
+			blockingContainer.setTop(null);
+			blockingContainer.setCenter(null);
+			blockingStage.hide();
+			blockingStage.setResizable(true);
+		});
+	}
+
+	private HBox createDssClientStepper(DssClientSigningStep currentStep) {
+		HBox stepper = new HBox(8);
+		stepper.setPadding(new Insets(12, 18, 8, 18));
+		stepper.setAlignment(Pos.CENTER_LEFT);
+		List<String> steps = List.of("1. Certificat", "2. Controle", "3. Signature");
+		for (int index = 0; index < steps.size(); index++) {
+			Label label = new Label(steps.get(index));
+			if (index + 1 == currentStep.getOrder()) {
+				label.setStyle("-fx-font-weight: bold; -fx-text-fill: #0d6efd;");
+			} else if (index + 1 < currentStep.getOrder()) {
+				label.setStyle("-fx-text-fill: #198754;");
+			} else {
+				label.setStyle("-fx-text-fill: #6c757d;");
+			}
+			stepper.getChildren().add(label);
+		}
+		return stepper;
 	}
 
 	private <T> void waitForUser(UIOperation<T> operation) {
@@ -232,7 +305,7 @@ public class StandaloneUIDisplay implements UIDisplay {
 		return fileChooser.showOpenDialog(blockingStage);
 	}
 
-	public boolean confirmDssClientSignature(String documentTitle, int documentCount) throws InterruptedException {
+	public boolean confirmDssClientSignature(String documentName, String origin) throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(1);
 		AtomicBoolean accepted = new AtomicBoolean(false);
 		AtomicBoolean completed = new AtomicBoolean(false);
@@ -244,10 +317,10 @@ public class StandaloneUIDisplay implements UIDisplay {
 			Label header = new Label("Confirmer la signature electronique");
 			header.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 			header.setWrapText(true);
-			Label document = new Label("Document : " + (documentTitle == null ? "" : documentTitle));
+			Label document = new Label("Nom du document : " + (documentName == null ? "" : documentName));
 			document.setWrapText(true);
-			Label count = new Label("Nombre de documents : " + documentCount);
-			Label origin = new Label("Provenance : esup-signature");
+			Label provenance = new Label("Provenance : " + (origin == null ? "esup-signature" : origin));
+			provenance.setWrapText(true);
 
 			Button cancel = new Button("Annuler");
 			Button confirm = new Button("Signer");
@@ -258,17 +331,17 @@ public class StandaloneUIDisplay implements UIDisplay {
 
 			HBox actions = new HBox(10, cancel, confirm);
 			actions.setPadding(new javafx.geometry.Insets(8, 0, 0, 0));
-			root.getChildren().addAll(header, document, count, origin, actions);
+			root.getChildren().addAll(header, document, provenance, actions);
 
-			Scene scene = new Scene(root);
-			scene.getStylesheets().add(this.getClass().getResource("/styles/esupdssclient.css").toString());
-			blockingStage.setScene(scene);
+			blockingContainer.setCenter(root);
 			blockingStage.setTitle("Esup-DSS-Client");
 			blockingStage.setOnCloseRequest(event -> {
 				event.consume();
 				finishDssClientConfirmation(false, accepted, completed, latch);
 			});
-			blockingStage.sizeToScene();
+			if (!dssClientSigningSessionActive) {
+				blockingStage.sizeToScene();
+			}
 			blockingStage.show();
 			blockingStage.toFront();
 		});
@@ -279,10 +352,23 @@ public class StandaloneUIDisplay implements UIDisplay {
 	private void finishDssClientConfirmation(boolean value, AtomicBoolean accepted, AtomicBoolean completed, CountDownLatch latch) {
 		if (completed.compareAndSet(false, true)) {
 			accepted.set(value);
-			if (!value) {
-				blockingStage.hide();
-			}
 			latch.countDown();
+		}
+	}
+
+	public enum DssClientSigningStep {
+		CERTIFICATE(1),
+		CONFIRMATION(2),
+		SIGNATURE(3);
+
+		private final int order;
+
+		DssClientSigningStep(int order) {
+			this.order = order;
+		}
+
+		public int getOrder() {
+			return order;
 		}
 	}
 	

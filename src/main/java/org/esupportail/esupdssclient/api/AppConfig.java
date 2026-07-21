@@ -40,8 +40,6 @@ public class AppConfig {
     private static final String ADVANCED_MODE_AVAILABLE = "advanced_mode_available";
     private static final String APPLICATION_NAME = "application_name";
     private static final String DEBUG = "debug";
-    private static final String ENABLE_HTTP_SERVER = "enable_http_server";
-    private static final String HTTP_SERVER_CLASS = "http_server_class";
     private static final String API_HOSTNAME = "api_hostname";
     private static final String INSTALL_URL = "install_url";
     private static final String SERVER_URL = "server_url";
@@ -59,7 +57,6 @@ public class AppConfig {
     private static final String PROXY_USERNAME = "proxy_username";
     private static final String PROXY_PASSWORD = "proxy_password";
     private static final String USER_PREFERENCES_EDITABLE = "user_preferences_editable";
-    private static final String REQUEST_PROCESSOR_CLASS = "request_processor_class";
 
     private static final String ROLLING_LOG_FILE_SIZE = "rolling_log_file_size";
     private static final String ROLLING_LOG_FILE_NUMBER = "rolling_log_file_number";
@@ -95,10 +92,6 @@ public class AppConfig {
 
     private String apiHostname;
 
-    private String httpServerClass;
-
-    private boolean enableHttpServer;
-
     private boolean debug;
 
     private boolean advancedModeAvailable;
@@ -125,8 +118,6 @@ public class AppConfig {
     private String proxyPassword;
 
     private boolean userPreferencesEditable;
-
-    private String requestProcessorClass;
 
     private File apiHome;
 
@@ -208,22 +199,6 @@ public class AppConfig {
 
     public void setApiHostname(final String apiHostname) {
         this.apiHostname = apiHostname;
-    }
-
-    public String getHttpServerClass() {
-        return this.httpServerClass;
-    }
-
-    public void setHttpServerClass(final String httpServerClass) {
-        this.httpServerClass = httpServerClass;
-    }
-
-    public boolean isEnableHttpServer() {
-        return enableHttpServer;
-    }
-
-    public void setEnableHttpServer(boolean enableHttpServer) {
-        this.enableHttpServer = enableHttpServer;
     }
 
     public boolean isDebug() {
@@ -358,14 +333,6 @@ public class AppConfig {
         this.userPreferencesEditable = userPreferencesEditable;
     }
 
-    public String getRequestProcessorClass() {
-        return this.requestProcessorClass;
-    }
-
-    public void setRequestProcessorClass(final String requestProcessorClass) {
-        this.requestProcessorClass = requestProcessorClass;
-    }
-
     public List<Integer> getBindingPortsHttps() {
         return this.bindingPortsHttps;
     }
@@ -469,8 +436,6 @@ public class AppConfig {
         this.setServerUrl(props.getProperty(SERVER_URL, ""));
         this.setInstallUrl(props.getProperty(INSTALL_URL, ""));
         this.setApiHostname(props.getProperty(API_HOSTNAME, "localhost"));
-        this.setEnableHttpServer(Boolean.parseBoolean(props.getProperty(ENABLE_HTTP_SERVER, "false")));
-        this.setHttpServerClass(props.getProperty(HTTP_SERVER_CLASS, "org.esupportail.esupdssclientjetty.JettyServer"));
         this.setDebug(Boolean.parseBoolean(props.getProperty(DEBUG, "false")));
         this.setAdvancedModeAvailable(Boolean.parseBoolean(props.getProperty(ADVANCED_MODE_AVAILABLE, "true")));
         this.setConnectionsCacheMaxSize(Integer.parseInt(props.getProperty(CONNECTIONS_CACHE_MAX_SIZE, "50")));
@@ -491,8 +456,6 @@ public class AppConfig {
 
         this.setRollingLogMaxFileNumber(Integer.parseInt(props.getProperty(ROLLING_LOG_FILE_NUMBER, "5")));
         this.setRollingLogMaxFileSize(props.getProperty(ROLLING_LOG_FILE_SIZE, "10MB"));
-
-        this.setRequestProcessorClass(props.getProperty(REQUEST_PROCESSOR_CLASS, "org.esupportail.esupdssclientjetty.RequestProcessor"));
 
         final String bindingPortHttpsStr = props.getProperty(BINDING_PORTS_HTTPS, "9895");
         if (isNotEmpty(bindingPortHttpsStr)) {

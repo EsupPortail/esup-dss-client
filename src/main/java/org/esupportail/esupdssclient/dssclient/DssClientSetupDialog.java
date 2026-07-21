@@ -1,6 +1,9 @@
 package org.esupportail.esupdssclient.dssclient;
 
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.TextInputDialog;
 import org.esupportail.esupdssclient.UserPreferences;
 import org.esupportail.esupdssclient.api.AppConfig;
@@ -29,18 +32,42 @@ public class DssClientSetupDialog {
 				return;
 			}
 			showing = true;
-			TextInputDialog dialog = new TextInputDialog();
-			dialog.setTitle("Esup-DSS-Client");
-			dialog.setHeaderText("Association a esup-signature");
-			dialog.setContentText("Collez l'URL d'association fournie dans votre profil esup-signature :");
-			Optional<String> value = dialog.showAndWait();
-			Optional<String> pairingUrl = value.filter(text -> !text.isBlank());
-			if (pairingUrl.isPresent()) {
-				pair(pairingUrl.get());
+			if (preferences.hasDssClientCredential()) {
+				showAssociatedClientDialog();
 			} else {
-				showing = false;
+				showPairingDialog();
 			}
 		});
+	}
+
+	private void showPairingDialog() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("Esup-DSS-Client");
+		dialog.setHeaderText("Association a esup-signature");
+		dialog.setGraphic(null);
+		dialog.setContentText("Collez l'URL d'association fournie dans votre profil esup-signature :");
+		Optional<String> value = dialog.showAndWait();
+		Optional<String> pairingUrl = value.filter(text -> !text.isBlank());
+		if (pairingUrl.isPresent()) {
+			pair(pairingUrl.get());
+		} else {
+			showing = false;
+		}
+	}
+
+	private void showAssociatedClientDialog() {
+		ButtonType dissociate = new ButtonType("Dissocier", ButtonBar.ButtonData.LEFT);
+		Alert dialog = new Alert(Alert.AlertType.NONE,
+				"Ce poste est actuellement associe a esup-signature.", dissociate, ButtonType.CLOSE);
+		dialog.setTitle("Esup-DSS-Client");
+		dialog.setHeaderText("Association a esup-signature");
+		dialog.setGraphic(null);
+		Optional<ButtonType> result = dialog.showAndWait();
+		if (result.isPresent() && result.get() == dissociate) {
+			webSocketService.stop();
+			preferences.clearDssClientCredential();
+		}
+		showing = false;
 	}
 
 	private void pair(String pairingUrl) {

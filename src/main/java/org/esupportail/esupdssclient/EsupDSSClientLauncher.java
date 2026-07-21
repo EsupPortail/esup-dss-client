@@ -15,7 +15,6 @@ package org.esupportail.esupdssclient;
 
 import com.sun.javafx.application.LauncherImpl;
 import javafx.application.Application;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.esupportail.esupdssclient.api.AppConfig;
 import org.slf4j.Logger;
@@ -23,10 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class EsupDSSClientLauncher {
@@ -49,15 +44,15 @@ public class EsupDSSClientLauncher {
 		loadAppConfig(props);
 
 		config.initDefaultProduct(props);
+		if (!SingleInstanceGuard.acquire(config.getApplicationName())) {
+			return;
+		}
 
 		globalConfigurer = new GlobalConfigurer(config, new UserPreferences(config.getApplicationName()));
 		if(StringUtils.isNotBlank(globalConfigurer.getDriver())) {
 			props.setProperty("opensc_command_module", globalConfigurer.getDriver());
 		}
-		boolean started = checkAlreadyStarted();
-		if (!started) {
-			LauncherImpl.launchApplication(getApplicationClass(), EsupDSSClientPreLoader.class, args);
-		}
+		LauncherImpl.launchApplication(getApplicationClass(), EsupDSSClientPreLoader.class, args);
 	}
 
 	public static AppConfig getConfig() {
@@ -70,33 +65,6 @@ public class EsupDSSClientLauncher {
 
 	public static GlobalConfigurer getGlobalConfigurer() {
 		return globalConfigurer;
-	}
-
-	private static boolean checkAlreadyStarted() throws MalformedURLException {
-		if (!config.isEnableHttpServer()) {
-			logger.info("Legacy local HTTP server is disabled; skipping /nexu-info already-started check.");
-			return false;
-		}
-		for (int port : config.getBindingPorts()) {
-			final URL url = new URL("http://" + config.getBindingIP() + ":" + port + "/nexu-info");
-			final URLConnection connection;
-			try {
-				connection = url.openConnection();
-				connection.setConnectTimeout(2000);
-				connection.setReadTimeout(2000);
-			} catch (IOException e) {
-				logger.warn("IOException when trying to open a connection to " + url + ": " + e.getMessage(), e);
-				continue;
-			}
-			try (InputStream in = connection.getInputStream()) {
-				final String info = IOUtils.toString(in, StandardCharsets.UTF_8);
-				logger.error("Esup-DSS-Client already started. Version '" + info + "'");
-				return true;
-			} catch (Exception e) {
-				logger.info("No " + url.toString() + " detected, " + e.getMessage());
-			}
-		}
-		return false;
 	}
 
 	private Properties loadProperties() throws IOException {

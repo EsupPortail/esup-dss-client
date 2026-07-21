@@ -150,7 +150,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			handleMessage(message);
 		} catch (Exception e) {
 			logger.error("Unable to process DSS client WebSocket message", e);
-			sendError(null, e.getMessage());
+			sendError(null, "client.exception", e.getMessage());
 		} finally {
 			webSocket.request(1);
 		}
@@ -241,13 +241,13 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	private void handleCertificateRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
 		lastDocumentContext = documentContext(message);
-		uiDisplay.setKeepBlockingStageOpen(true);
+		uiDisplay.startDssClientSigningSession();
 		try {
 			logger.info("Processing certificate_request correlationId={}", correlationId);
 			Execution<GetCertificateResponse> execution = api.getCertificate(new GetCertificateRequest());
 			if (!execution.isSuccess()) {
 				logger.warn("Certificate request failed with operation error: {}", execution.getErrorMessage());
-				sendError(correlationId, execution.getErrorMessage());
+				sendError(correlationId, execution.getError(), execution.getErrorMessage());
 				finishWssUiFlow();
 				return;
 			}
@@ -267,7 +267,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			send(response);
 		} catch (Exception e) {
 			logger.error("Certificate request failed", e);
-			sendError(correlationId, e.getMessage());
+			sendError(correlationId, "client.exception", e.getMessage());
 			finishWssUiFlow();
 		}
 	}
@@ -276,9 +276,10 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		String correlationId = getString(message, "correlationId");
 		DocumentContext documentContext = documentContext(message);
 		try {
-			logger.info("Processing sign_request correlationId={}, documentTitle={}, documentCount={}",
-					correlationId, documentContext.documentTitle(), documentContext.documentCount());
-			if (!confirmSignature(documentContext.documentTitle(), documentContext.documentCount())) {
+			logger.info("Processing sign_request correlationId={}, documentName={}, origin={}",
+					correlationId, documentContext.documentName(), documentContext.origin());
+			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.CONFIRMATION);
+			if (!confirmSignature(documentContext.documentName(), documentContext.origin())) {
 				logger.info("User cancelled sign_request correlationId={}", correlationId);
 				send(Map.of("type", "user_cancel", "correlationId", correlationId));
 				finishWssUiFlow();
@@ -295,10 +296,11 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			request.setToBeSigned(toBeSigned);
 			request.setDigestAlgorithm(DigestAlgorithm.forName(getString(message, "digestAlgo"), DigestAlgorithm.SHA256));
 
+			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.SIGNATURE);
 			Execution<SignatureResponse> execution = api.sign(request);
 			if (!execution.isSuccess()) {
 				logger.warn("Signature request failed with operation error: {}", execution.getErrorMessage());
-				sendError(correlationId, execution.getErrorMessage());
+				sendError(correlationId, execution.getError(), execution.getErrorMessage());
 				finishWssUiFlow();
 				return;
 			}
@@ -312,18 +314,17 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			finishWssUiFlow();
 		} catch (Exception e) {
 			logger.error("Signature request failed", e);
-			sendError(correlationId, e.getMessage());
+			sendError(correlationId, "client.exception", e.getMessage());
 			finishWssUiFlow();
 		}
 	}
 
 	private void finishWssUiFlow() {
-		uiDisplay.setKeepBlockingStageOpen(false);
-		uiDisplay.close(true);
+		uiDisplay.finishDssClientSigningSession();
 	}
 
-	private boolean confirmSignature(String documentTitle, int documentCount) throws InterruptedException {
-		return uiDisplay.confirmDssClientSignature(documentTitle, documentCount);
+	private boolean confirmSignature(String documentName, String origin) throws InterruptedException {
+		return uiDisplay.confirmDssClientSignature(documentName, origin);
 	}
 
 	private void showInformation(String title, String message) {
@@ -331,20 +332,31 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	private DocumentContext documentContext(JsonObject message) {
-		String documentTitle = getString(message, "documentTitle");
-		int documentCount = message.has("documentCount") ? message.get("documentCount").getAsInt() : 1;
-		if (documentTitle == null && lastDocumentContext != null) {
-			return lastDocumentContext;
+		String documentName = getString(message, "documentName");
+		if (documentName == null) {
+			documentName = getString(message, "documentTitle");
 		}
-		return new DocumentContext(documentTitle, documentCount);
+		String origin = getString(message, "origin");
+		if (lastDocumentContext != null) {
+			if (documentName == null) {
+				documentName = lastDocumentContext.documentName();
+			}
+			if (origin == null) {
+				origin = lastDocumentContext.origin();
+			}
+		}
+		return new DocumentContext(documentName, origin);
 	}
 
-	private void sendError(String correlationId, String errorMessage) {
-		logger.warn("Sending DSS client error correlationId={}, message={}", correlationId, errorMessage);
+	private void sendError(String correlationId, String errorCode, String errorMessage) {
+		logger.warn("Sending DSS client error correlationId={}, code={}, message={}", correlationId, errorCode, errorMessage);
 		Map<String, String> response = new LinkedHashMap<>();
 		response.put("type", "error");
 		if (correlationId != null) {
 			response.put("correlationId", correlationId);
+		}
+		if (errorCode != null && !errorCode.isBlank()) {
+			response.put("errorCode", errorCode);
 		}
 		response.put("errorMessage", errorMessage == null ? "Erreur Esup-DSS-Client" : errorMessage);
 		send(response);
@@ -407,5 +419,5 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		return object.has(field) && !object.get(field).isJsonNull() ? object.get(field).getAsString() : null;
 	}
 
-	private record DocumentContext(String documentTitle, int documentCount) {}
+	private record DocumentContext(String documentName, String origin) {}
 }
