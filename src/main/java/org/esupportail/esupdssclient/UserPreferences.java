@@ -14,8 +14,11 @@
 package org.esupportail.esupdssclient;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import org.esupportail.esupdssclient.dssclient.DssClientAssociation;
+import org.esupportail.esupdssclient.dssclient.secret.PreferencesSecretStore;
+import org.esupportail.esupdssclient.dssclient.secret.SecretStore;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -39,9 +42,11 @@ public class UserPreferences {
 	private static final String DSS_CLIENT_WEBSOCKET_URL = "org.esupportail.esupdssclient.dssClient.websocketUrl";
 	private static final String DSS_CLIENT_ASSOCIATED_URL = "org.esupportail.esupdssclient.dssClient.associatedUrl";
 	private static final String DSS_CLIENT_ASSOCIATIONS = "org.esupportail.esupdssclient.dssClient.associations";
-	private static final Type DSS_CLIENT_ASSOCIATION_LIST_TYPE = new TypeToken<List<DssClientAssociation>>() {}.getType();
+	private static final Type STORED_DSS_CLIENT_ASSOCIATION_LIST_TYPE =
+			new TypeToken<List<StoredDssClientAssociation>>() {}.getType();
 
 	private final Preferences prefs;
+	private final SecretStore secretStore;
 	private final Gson gson = new Gson();
 
 	private String driver;
@@ -56,7 +61,16 @@ public class UserPreferences {
 	private List<DssClientAssociation> dssClientAssociations;
 
 	public UserPreferences(final String applicationName) {
-		prefs = Preferences.userRoot().node(applicationName);
+		this(Preferences.userRoot().node(applicationName));
+	}
+
+	private UserPreferences(Preferences preferences) {
+		this(preferences, new PreferencesSecretStore(preferences));
+	}
+
+	public UserPreferences(final Preferences preferences, final SecretStore secretStore) {
+		this.prefs = preferences;
+		this.secretStore = secretStore;
 
 		driver = prefs.get(DRIVER, null);
 
@@ -210,15 +224,29 @@ public class UserPreferences {
 		if (association == null || !association.isComplete()) {
 			throw new IllegalArgumentException("L'association esup-signature est incomplete");
 		}
-		dssClientAssociations.removeIf(existing -> existing.getDeviceId().equals(association.getDeviceId())
-				|| existing.getAssociatedUrl().equals(association.getAssociatedUrl()));
-		dssClientAssociations.add(association);
-		storeDssClientAssociations();
+		List<DssClientAssociation> replaced = dssClientAssociations.stream()
+				.filter(existing -> existing.getDeviceId().equals(association.getDeviceId())
+						|| existing.getAssociatedUrl().equals(association.getAssociatedUrl()))
+				.toList();
+		secretStore.store(association.getDeviceId(), association.getSecret());
+		List<DssClientAssociation> updated = new ArrayList<>(dssClientAssociations);
+		updated.removeAll(replaced);
+		updated.add(association);
+		storeDssClientAssociations(updated);
+		replaced.stream()
+				.filter(existing -> !existing.getDeviceId().equals(association.getDeviceId()))
+				.forEach(existing -> secretStore.delete(existing.getDeviceId()));
+		dssClientAssociations = updated;
 	}
 
 	public synchronized void removeDssClientAssociation(String deviceId) {
-		if (dssClientAssociations.removeIf(association -> association.getDeviceId().equals(deviceId))) {
-			storeDssClientAssociations();
+		List<DssClientAssociation> updated = dssClientAssociations.stream()
+				.filter(association -> !association.getDeviceId().equals(deviceId))
+				.toList();
+		if (updated.size() != dssClientAssociations.size()) {
+			storeDssClientAssociations(updated);
+			secretStore.revoke(deviceId);
+			dssClientAssociations = new ArrayList<>(updated);
 		}
 	}
 
@@ -226,36 +254,71 @@ public class UserPreferences {
 		String storedAssociations = prefs.get(DSS_CLIENT_ASSOCIATIONS, null);
 		if (storedAssociations != null && !storedAssociations.isBlank()) {
 			try {
-				List<DssClientAssociation> associations = gson.fromJson(storedAssociations, DSS_CLIENT_ASSOCIATION_LIST_TYPE);
-				if (associations != null) {
-					return new ArrayList<>(associations.stream().filter(DssClientAssociation::isComplete).toList());
+				List<StoredDssClientAssociation> stored = gson.fromJson(
+						storedAssociations, STORED_DSS_CLIENT_ASSOCIATION_LIST_TYPE);
+				if (stored != null) {
+					boolean migrated = stored.stream().anyMatch(association -> isNotBlank(association.secret));
+					List<DssClientAssociation> associations = stored.stream()
+							.map(this::restoreAssociation)
+							.filter(DssClientAssociation::isComplete)
+							.toList();
+					if (migrated) {
+						storeDssClientAssociations(associations);
+					}
+					return new ArrayList<>(associations);
 				}
-			} catch (RuntimeException ignored) {
+			} catch (JsonParseException ignored) {
 				// An unreadable local value is treated as an absent association.
 			}
 			return new ArrayList<>();
 		}
 
 		List<DssClientAssociation> associations = new ArrayList<>();
+		String legacySecret = prefs.get(DSS_CLIENT_SECRET, null);
 		DssClientAssociation legacyAssociation = new DssClientAssociation(
 				prefs.get(DSS_CLIENT_ASSOCIATED_URL, null),
 				prefs.get(DSS_CLIENT_DEVICE_ID, null),
-				prefs.get(DSS_CLIENT_SECRET, null),
+				legacySecret,
 				prefs.get(DSS_CLIENT_WEBSOCKET_URL, null));
 		if (legacyAssociation.isComplete()) {
+			secretStore.store(legacyAssociation.getDeviceId(), legacySecret);
 			associations.add(legacyAssociation);
-			prefs.put(DSS_CLIENT_ASSOCIATIONS, gson.toJson(associations));
+			storeDssClientAssociations(associations);
 		}
 		removeLegacyDssClientCredential();
 		return associations;
 	}
 
 	private void storeDssClientAssociations() {
-		if (dssClientAssociations.isEmpty()) {
-			prefs.remove(DSS_CLIENT_ASSOCIATIONS);
-		} else {
-			prefs.put(DSS_CLIENT_ASSOCIATIONS, gson.toJson(dssClientAssociations));
+		storeDssClientAssociations(dssClientAssociations);
+	}
+
+	private void storeDssClientAssociations(List<DssClientAssociation> associations) {
+		try {
+			if (associations.isEmpty()) {
+				prefs.remove(DSS_CLIENT_ASSOCIATIONS);
+			} else {
+				List<StoredDssClientAssociation> stored = associations.stream()
+						.map(StoredDssClientAssociation::fromAssociation)
+						.toList();
+				prefs.put(DSS_CLIENT_ASSOCIATIONS, gson.toJson(stored));
+			}
+			prefs.flush();
+		} catch (BackingStoreException e) {
+			throw new IllegalStateException("Impossible d'enregistrer les associations esup-signature", e);
 		}
+	}
+
+	private DssClientAssociation restoreAssociation(StoredDssClientAssociation stored) {
+		if (isNotBlank(stored.secret) && isNotBlank(stored.deviceId)) {
+			secretStore.store(stored.deviceId, stored.secret);
+		}
+		String secret = isNotBlank(stored.deviceId) ? secretStore.retrieve(stored.deviceId).orElse(null) : null;
+		return new DssClientAssociation(stored.associatedUrl, stored.deviceId, secret, stored.websocketUrl);
+	}
+
+	private boolean isNotBlank(String value) {
+		return value != null && !value.isBlank();
 	}
 
 	private void removeLegacyDssClientCredential() {
@@ -263,9 +326,15 @@ public class UserPreferences {
 		prefs.remove(DSS_CLIENT_SECRET);
 		prefs.remove(DSS_CLIENT_WEBSOCKET_URL);
 		prefs.remove(DSS_CLIENT_ASSOCIATED_URL);
+		try {
+			prefs.flush();
+		} catch (BackingStoreException e) {
+			throw new IllegalStateException("Impossible de terminer la migration de l'association esup-signature", e);
+		}
 	}
 
 	public void clear() {
+		dssClientAssociations.forEach(association -> secretStore.delete(association.getDeviceId()));
 		try {
 			this.prefs.clear();
 		} catch (BackingStoreException e) {
@@ -279,5 +348,21 @@ public class UserPreferences {
 		proxyUsername = null;
 		proxyPassword = null;
 		dssClientAssociations = new ArrayList<>();
+	}
+
+	private static final class StoredDssClientAssociation {
+		private String associatedUrl;
+		private String deviceId;
+		private String websocketUrl;
+		// Read only during migration from the previous JSON representation.
+		private String secret;
+
+		private static StoredDssClientAssociation fromAssociation(DssClientAssociation association) {
+			StoredDssClientAssociation stored = new StoredDssClientAssociation();
+			stored.associatedUrl = association.getAssociatedUrl();
+			stored.deviceId = association.getDeviceId();
+			stored.websocketUrl = association.getWebsocketUrl();
+			return stored;
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package org.esupportail.esupdssclient.dssclient;
 
 import com.google.gson.Gson;
+import org.esupportail.esupdssclient.EsupDSSClientLauncher;
 import org.esupportail.esupdssclient.UserPreferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,7 +169,12 @@ public class DssClientPairingService {
 	}
 
 	static boolean isInsecureHttpAllowed() {
-		return Boolean.parseBoolean(System.getProperty(ALLOW_INSECURE_HTTP_PROPERTY, "false"));
+		String configuredValue = "false";
+		if (EsupDSSClientLauncher.getProperties() != null) {
+			configuredValue = EsupDSSClientLauncher.getProperties()
+					.getProperty(ALLOW_INSECURE_HTTP_PROPERTY, configuredValue);
+		}
+		return Boolean.parseBoolean(System.getProperty(ALLOW_INSECURE_HTTP_PROPERTY, configuredValue));
 	}
 
 	private static boolean isInsecureScheme(String scheme) {

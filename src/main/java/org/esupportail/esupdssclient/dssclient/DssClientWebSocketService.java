@@ -34,6 +34,12 @@ import java.util.function.Consumer;
 public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private static final Logger logger = LoggerFactory.getLogger(DssClientWebSocketService.class);
+	static final int MAX_MESSAGE_CHARS = 2 * 1024 * 1024;
+	static final int MAX_BATCH_ITEMS = 100;
+	static final int MAX_DATA_TO_SIGN_BYTES = 64 * 1024;
+	static final int MAX_BATCH_BYTES = 1024 * 1024;
+	private static final long SESSION_TIMEOUT_SECONDS = 300;
+	private static final long MAX_RECONNECT_DELAY_SECONDS = 300;
 
 	private final EsupDSSClientAPI api;
 	private final DssClientAssociation association;
@@ -53,12 +59,13 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	private volatile WebSocket webSocket;
 	private volatile ScheduledFuture<?> heartbeat;
 	private volatile ScheduledFuture<?> reconnect;
-	private volatile GetCertificateResponse lastCertificate;
-	private volatile DocumentContext lastDocumentContext;
+	private final StringBuilder incomingText = new StringBuilder();
+	private volatile SigningSession activeSession;
 	private volatile boolean stopped;
 	private volatile boolean connecting;
 	private volatile boolean pendingApproval;
 	private volatile boolean authenticated;
+	private volatile int reconnectAttempt;
 
 	DssClientWebSocketService(EsupDSSClientAPI api, DssClientAssociation association, StandaloneUIDisplay uiDisplay,
 			DssClientSigningCoordinator signingCoordinator,
@@ -109,7 +116,6 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 						socket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
 					} else {
 						logger.info("DSS client WebSocket build completed for device {}", maskDeviceId(association.getDeviceId()));
-						webSocket = socket;
 					}
 				});
 	}
@@ -151,23 +157,23 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		}
 		WebSocket socket = webSocket;
 		webSocket = null;
+		incomingText.setLength(0);
 		if (socket != null) {
 			socket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
 		}
-		if (signingCoordinator.release(this)) {
-			uiDisplay.finishDssClientSigningSession();
-		}
+		abortActiveSession();
 		scheduler.shutdownNow();
 		statusListener.accept(DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
 	}
 
 	@Override
-	public void onOpen(WebSocket webSocket) {
+	public synchronized void onOpen(WebSocket webSocket) {
 		if (stopped) {
 			webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
 			return;
 		}
 		this.webSocket = webSocket;
+		incomingText.setLength(0);
 		authenticated = false;
 		logger.info("DSS client WebSocket opened for device {}", maskDeviceId(association.getDeviceId()));
 		statusListener.accept(pendingApproval
@@ -179,15 +185,25 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	@Override
-	public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-		if (!last) {
+	public synchronized CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+		if (this.webSocket != webSocket) {
 			webSocket.request(1);
 			return CompletableFuture.completedFuture(null);
 		}
 		try {
-			logger.debug("DSS client WebSocket received payload: {}", data);
-			JsonObject message = JsonParser.parseString(data.toString()).getAsJsonObject();
-			handleMessage(message);
+			incomingText.append(data);
+			if (incomingText.length() > MAX_MESSAGE_CHARS) {
+				incomingText.setLength(0);
+				webSocket.sendClose(1009, "message too large");
+				return CompletableFuture.completedFuture(null);
+			}
+			if (last) {
+				String payload = incomingText.toString();
+				incomingText.setLength(0);
+				logger.debug("DSS client WebSocket received payload: {}", payload);
+				JsonObject message = JsonParser.parseString(payload).getAsJsonObject();
+				handleMessage(message);
+			}
 		} catch (Exception e) {
 			logger.error("Unable to process DSS client WebSocket message", e);
 			sendError(null, "client.exception", e.getMessage());
@@ -198,17 +214,19 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	@Override
-	public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+	public synchronized CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
 		logger.warn("DSS client WebSocket closed for device {}: status={} reason={}",
 				maskDeviceId(association.getDeviceId()), statusCode, reason);
+		if (this.webSocket != webSocket) {
+			return CompletableFuture.completedFuture(null);
+		}
 		this.webSocket = null;
+		incomingText.setLength(0);
 		authenticated = false;
 		statusListener.accept(pendingApproval
 				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
 				: DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
-		if (signingCoordinator.release(this)) {
-			uiDisplay.finishDssClientSigningSession();
-		}
+		abortActiveSession();
 		if (heartbeat != null) {
 			heartbeat.cancel(true);
 			heartbeat = null;
@@ -220,16 +238,22 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	@Override
-	public void onError(WebSocket webSocket, Throwable error) {
+	public synchronized void onError(WebSocket webSocket, Throwable error) {
 		logger.warn("DSS client WebSocket error for device {}: {}",
 				maskDeviceId(association.getDeviceId()), error.getMessage(), error);
+		if (this.webSocket != webSocket) {
+			return;
+		}
 		this.webSocket = null;
+		incomingText.setLength(0);
 		authenticated = false;
 		statusListener.accept(pendingApproval
 				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
 				: DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
-		if (signingCoordinator.release(this)) {
-			uiDisplay.finishDssClientSigningSession();
+		abortActiveSession();
+		if (heartbeat != null) {
+			heartbeat.cancel(true);
+			heartbeat = null;
 		}
 		if (!stopped) {
 			scheduleReconnect();
@@ -264,17 +288,24 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		logger.debug("DSS client heartbeat scheduled.");
 	}
 
-	private void scheduleReconnect() {
+	private synchronized void scheduleReconnect() {
 		if (stopped || scheduler.isShutdown() || reconnect != null && !reconnect.isDone()) {
 			return;
 		}
-		long delaySeconds = pendingApproval ? 2 : 30;
+		long delaySeconds = nextReconnectDelaySeconds(reconnectAttempt++, pendingApproval,
+				ThreadLocalRandom.current().nextDouble(0.5, 1.5));
 		logger.info("Scheduling DSS client WebSocket reconnect in {} seconds for device {}",
 				delaySeconds, maskDeviceId(association.getDeviceId()));
 		reconnect = scheduler.schedule(() -> {
 			reconnect = null;
 			connect();
 		}, delaySeconds, TimeUnit.SECONDS);
+	}
+
+	static long nextReconnectDelaySeconds(int attempt, boolean pendingApproval, double jitter) {
+		long base = pendingApproval ? 10 : Math.min(MAX_RECONNECT_DELAY_SECONDS,
+				2L << Math.min(Math.max(attempt, 0), 7));
+		return Math.max(1, Math.min(MAX_RECONNECT_DELAY_SECONDS, Math.round(base * jitter)));
 	}
 
 	private void handleMessage(JsonObject message) {
@@ -300,8 +331,15 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		case "authenticated":
 			pendingApproval = false;
 			authenticated = true;
+			reconnectAttempt = 0;
 			statusListener.accept(DssClientConnectionManager.ConnectionStatus.CONNECTED);
 			logger.info("DSS client authenticated on {}.", association.getAssociatedUrl());
+			break;
+		case "cancel_session":
+			if (!requireAuthenticated(message)) {
+				break;
+			}
+			handleCancelSession(message);
 			break;
 		case "certificate_request":
 			if (!requireAuthenticated(message)) {
@@ -334,23 +372,34 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private void handleCertificateRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
-		if (!signingCoordinator.acquire(this)) {
-			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours");
+		String sessionId = getString(message, "sessionId");
+		if (sessionId == null || sessionId.isBlank()) {
+			sendError(correlationId, "client.invalid_session", "sessionId est obligatoire");
 			return;
 		}
-		lastDocumentContext = documentContext(message);
+		if (activeSession != null) {
+			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours", null, sessionId);
+			return;
+		}
+		if (!signingCoordinator.acquire(this)) {
+			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours", null, sessionId);
+			return;
+		}
+		SigningSession session = new SigningSession(sessionId, correlationId, documentContext(message));
+		activeSession = session;
+		session.timeout = scheduler.schedule(() -> expireSession(session), SESSION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 		uiDisplay.startDssClientSigningSession();
 		try {
 			logger.info("Processing certificate_request correlationId={}", correlationId);
 			Execution<GetCertificateResponse> execution = api.getCertificate(new GetCertificateRequest());
 			if (!execution.isSuccess()) {
 				logger.warn("Certificate request failed with operation error: {}", execution.getErrorMessage());
-				sendError(correlationId, execution.getError(), execution.getErrorMessage());
+				sendError(correlationId, execution.getError(), execution.getErrorMessage(), null, sessionId);
 				finishWssUiFlow();
 				return;
 			}
 			GetCertificateResponse certificate = execution.getResponse();
-			lastCertificate = certificate;
+			session.certificate = certificate;
 			logger.info("Certificate selected for correlationId={}, tokenId={}, keyId={}, encryptionAlgorithm={}",
 					correlationId,
 					certificate.getTokenId() != null ? certificate.getTokenId().getId() : null,
@@ -358,6 +407,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 					certificate.getEncryptionAlgorithm());
 			Map<String, Object> response = new LinkedHashMap<>();
 			response.put("type", "certificate_response");
+			response.put("sessionId", sessionId);
 			response.put("correlationId", correlationId);
 			response.put("certificate", encodeCertificate(certificate.getCertificate()));
 			response.put("certificateChain", encodeCertificateChain(certificate.getCertificateChain()));
@@ -365,18 +415,21 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			send(response);
 		} catch (Exception e) {
 			logger.error("Certificate request failed", e);
-			sendError(correlationId, "client.exception", e.getMessage());
+			sendError(correlationId, "client.exception", e.getMessage(), null, sessionId);
 			finishWssUiFlow();
 		}
 	}
 
 	void handleSignRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
-		if (!signingCoordinator.acquire(this)) {
-			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours");
+		String sessionId = getString(message, "sessionId");
+		SigningSession session = activeSession;
+		if (sessionId == null || session == null || !session.sessionId.equals(sessionId)) {
+			sendError(correlationId, "client.invalid_session", "La session de signature est inconnue", null, sessionId);
 			return;
 		}
-		DocumentContext documentContext = documentContext(message);
+		session.correlationId = correlationId;
+		DocumentContext documentContext = session.documentContext;
 		try {
 			boolean batchRequest = message.has("dataToSign") && message.get("dataToSign").isJsonArray();
 			List<ToBeSigned> valuesToSign = parseDataToSign(message);
@@ -385,23 +438,24 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.CONFIRMATION);
 			if (!confirmSignature(documentContext.documentName(), documentContext.origin())) {
 				logger.info("User cancelled sign_request correlationId={}", correlationId);
-				send(Map.of("type", "user_cancel", "correlationId", correlationId));
+				send(Map.of("type", "user_cancel", "sessionId", sessionId, "correlationId", correlationId));
 				finishWssUiFlow();
 				return;
 			}
-			if (lastCertificate == null) {
+			if (session.certificate == null) {
 				throw new IllegalStateException("Aucun certificat n'a ete selectionne");
 			}
 			uiDisplay.setDssClientSigningStep(StandaloneUIDisplay.DssClientSigningStep.SIGNATURE);
 			DigestAlgorithm digestAlgorithm = DigestAlgorithm.forName(getString(message, "digestAlgo"), DigestAlgorithm.SHA256);
 			if (batchRequest) {
 				SignatureBatchRequest request = new SignatureBatchRequest();
-				request.setTokenId(lastCertificate.getTokenId());
-				request.setKeyId(lastCertificate.getKeyId());
+				request.setTokenId(session.certificate.getTokenId());
+				request.setKeyId(session.certificate.getKeyId());
 				request.setValuesToSign(valuesToSign);
 				request.setDigestAlgorithm(digestAlgorithm);
 				request.setProgressListener((completed, total) -> send(Map.of(
 						"type", "sign_progress",
+						"sessionId", sessionId,
 						"correlationId", correlationId,
 						"completed", completed,
 						"total", total
@@ -411,7 +465,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 				if (!execution.isSuccess()) {
 					logger.warn("Batch signature request failed at index={} with operation error: {}",
 							execution.getFailedIndex(), execution.getErrorMessage());
-					sendError(correlationId, execution.getError(), execution.getErrorMessage(), execution.getFailedIndex());
+					sendError(correlationId, execution.getError(), execution.getErrorMessage(), execution.getFailedIndex(), sessionId);
 					finishWssUiFlow();
 					return;
 				}
@@ -422,20 +476,21 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 						correlationId, signatureValues.size());
 				send(Map.of(
 						"type", "sign_response",
+						"sessionId", sessionId,
 						"correlationId", correlationId,
 						"signatureValues", signatureValues
 				));
 			} else {
 				SignatureRequest request = new SignatureRequest();
-				request.setTokenId(lastCertificate.getTokenId());
-				request.setKeyId(lastCertificate.getKeyId());
+				request.setTokenId(session.certificate.getTokenId());
+				request.setKeyId(session.certificate.getKeyId());
 				request.setToBeSigned(valuesToSign.get(0));
 				request.setDigestAlgorithm(digestAlgorithm);
 
 				Execution<SignatureResponse> execution = api.sign(request);
 				if (!execution.isSuccess()) {
 					logger.warn("Signature request failed with operation error: {}", execution.getErrorMessage());
-					sendError(correlationId, execution.getError(), execution.getErrorMessage());
+					sendError(correlationId, execution.getError(), execution.getErrorMessage(), null, sessionId);
 					finishWssUiFlow();
 					return;
 				}
@@ -444,6 +499,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 						correlationId, execution.getResponse().getSignatureValue().length);
 				send(Map.of(
 						"type", "sign_response",
+						"sessionId", sessionId,
 						"correlationId", correlationId,
 						"signatureValue", signatureValue
 				));
@@ -451,14 +507,51 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 			finishWssUiFlow();
 		} catch (Exception e) {
 			logger.error("Signature request failed", e);
-			sendError(correlationId, "client.exception", e.getMessage());
+			sendError(correlationId, "client.exception", e.getMessage(), null, sessionId);
 			finishWssUiFlow();
 		}
 	}
 
-	private void finishWssUiFlow() {
+	private synchronized void finishWssUiFlow() {
+		SigningSession session = activeSession;
+		activeSession = null;
+		if (session != null && session.timeout != null) {
+			session.timeout.cancel(false);
+		}
 		uiDisplay.finishDssClientSigningSession();
 		signingCoordinator.release(this);
+	}
+
+	private synchronized void abortActiveSession() {
+		if (activeSession != null) {
+			finishWssUiFlow();
+		} else if (signingCoordinator.release(this)) {
+			uiDisplay.finishDssClientSigningSession();
+		}
+	}
+
+	private void expireSession(SigningSession expected) {
+		synchronized (this) {
+			if (activeSession != expected) {
+				return;
+			}
+		}
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("type", "session_expired");
+		response.put("sessionId", expected.sessionId);
+		if (expected.correlationId != null) {
+			response.put("correlationId", expected.correlationId);
+		}
+		send(response);
+		finishWssUiFlow();
+	}
+
+	private void handleCancelSession(JsonObject message) {
+		String sessionId = getString(message, "sessionId");
+		SigningSession session = activeSession;
+		if (session != null && session.sessionId.equals(sessionId)) {
+			finishWssUiFlow();
+		}
 	}
 
 	private boolean confirmSignature(String documentName, String origin) throws InterruptedException {
@@ -474,9 +567,10 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		if (documentName == null) {
 			documentName = getString(message, "documentTitle");
 		}
-		if (lastDocumentContext != null) {
+		SigningSession session = activeSession;
+		if (session != null && session.documentContext != null) {
 			if (documentName == null) {
-				documentName = lastDocumentContext.documentName();
+				documentName = session.documentContext.documentName();
 			}
 		}
 		// The provenance shown to the user is the locally stored association.
@@ -489,9 +583,16 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	private void sendError(String correlationId, String errorCode, String errorMessage, Integer failedIndex) {
+		sendError(correlationId, errorCode, errorMessage, failedIndex, null);
+	}
+
+	private void sendError(String correlationId, String errorCode, String errorMessage, Integer failedIndex, String sessionId) {
 		logger.warn("Sending DSS client error correlationId={}, code={}, message={}", correlationId, errorCode, errorMessage);
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put("type", "error");
+		if (sessionId != null) {
+			response.put("sessionId", sessionId);
+		}
 		if (correlationId != null) {
 			response.put("correlationId", correlationId);
 		}
@@ -577,18 +678,44 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		if (encodedValues.isEmpty()) {
 			throw new IllegalArgumentException("dataToSign ne peut pas etre une liste vide");
 		}
+		if (encodedValues.size() > MAX_BATCH_ITEMS) {
+			throw new IllegalArgumentException("Le lot dépasse la limite de " + MAX_BATCH_ITEMS + " signatures");
+		}
 
 		List<ToBeSigned> valuesToSign = new ArrayList<>(encodedValues.size());
+		long batchBytes = 0;
 		for (JsonElement encodedValue : encodedValues) {
 			if (encodedValue == null || !encodedValue.isJsonPrimitive() || !encodedValue.getAsJsonPrimitive().isString()) {
 				throw new IllegalArgumentException("Chaque dataToSign doit etre une chaine Base64");
 			}
+			byte[] decoded = Base64.getDecoder().decode(encodedValue.getAsString());
+			if (decoded.length > MAX_DATA_TO_SIGN_BYTES) {
+				throw new IllegalArgumentException("Une donnée à signer dépasse la limite de " + MAX_DATA_TO_SIGN_BYTES + " octets");
+			}
+			batchBytes += decoded.length;
+			if (batchBytes > MAX_BATCH_BYTES) {
+				throw new IllegalArgumentException("Le lot dépasse la limite totale de " + MAX_BATCH_BYTES + " octets");
+			}
 			ToBeSigned toBeSigned = new ToBeSigned();
-			toBeSigned.setBytes(Base64.getDecoder().decode(encodedValue.getAsString()));
+			toBeSigned.setBytes(decoded);
 			valuesToSign.add(toBeSigned);
 		}
 		return valuesToSign;
 	}
 
 	private record DocumentContext(String documentName, String origin) {}
+
+	private static final class SigningSession {
+		private final String sessionId;
+		private final DocumentContext documentContext;
+		private volatile String correlationId;
+		private volatile GetCertificateResponse certificate;
+		private volatile ScheduledFuture<?> timeout;
+
+		private SigningSession(String sessionId, String correlationId, DocumentContext documentContext) {
+			this.sessionId = sessionId;
+			this.correlationId = correlationId;
+			this.documentContext = documentContext;
+		}
+	}
 }

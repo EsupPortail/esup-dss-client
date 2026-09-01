@@ -67,6 +67,9 @@ public class DssClientConnectionManager {
 
 	public void revokeAssociation(DssClientAssociation association) {
 		synchronized (this) {
+			if (statuses.get(association.getDeviceId()) == ConnectionStatus.REVOKING) {
+				return;
+			}
 			statuses.put(association.getDeviceId(), ConnectionStatus.REVOKING);
 			notifyListeners();
 		}

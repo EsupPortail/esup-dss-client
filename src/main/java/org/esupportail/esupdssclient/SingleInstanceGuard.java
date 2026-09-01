@@ -9,6 +9,9 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 import java.nio.file.StandardOpenOption;
 
 /** Keeps the desktop client to one JVM without relying on the legacy HTTP server. */
@@ -17,6 +20,13 @@ final class SingleInstanceGuard {
 	private static final Logger logger = LoggerFactory.getLogger(SingleInstanceGuard.class);
 	private static FileChannel channel;
 	private static FileLock lock;
+	private static final Set<PosixFilePermission> DIRECTORY_PERMISSIONS = Set.of(
+			PosixFilePermission.OWNER_READ,
+			PosixFilePermission.OWNER_WRITE,
+			PosixFilePermission.OWNER_EXECUTE);
+	private static final Set<PosixFilePermission> FILE_PERMISSIONS = Set.of(
+			PosixFilePermission.OWNER_READ,
+			PosixFilePermission.OWNER_WRITE);
 
 	private SingleInstanceGuard() {
 	}
@@ -29,8 +39,10 @@ final class SingleInstanceGuard {
 		try {
 			Path directory = Path.of(System.getProperty("user.home"), ".esup-dss-client");
 			Files.createDirectories(directory);
+			setPosixPermissions(directory, DIRECTORY_PERMISSIONS);
 			Path lockFile = directory.resolve(safeFileName(applicationName) + ".lock");
 			channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+			setPosixPermissions(lockFile, FILE_PERMISSIONS);
 			lock = channel.tryLock();
 			if (lock == null) {
 				closeChannel();
@@ -46,12 +58,12 @@ final class SingleInstanceGuard {
 			return false;
 		} catch (IOException e) {
 			closeChannel();
-			logger.warn("Unable to acquire single-instance lock; continuing startup: {}", e.getMessage());
-			return true;
+			logger.error("Unable to acquire single-instance lock; refusing startup: {}", e.getMessage());
+			return false;
 		}
 	}
 
-	private static synchronized void release() {
+	static synchronized void release() {
 		try {
 			if (lock != null && lock.isValid()) {
 				lock.release();
@@ -78,5 +90,11 @@ final class SingleInstanceGuard {
 
 	private static String safeFileName(String applicationName) {
 		return applicationName == null ? "esup-dss-client" : applicationName.replaceAll("[^A-Za-z0-9._-]", "_");
+	}
+
+	private static void setPosixPermissions(Path path, Set<PosixFilePermission> permissions) throws IOException {
+		if (Files.getFileAttributeView(path, PosixFileAttributeView.class) != null) {
+			Files.setPosixFilePermissions(path, permissions);
+		}
 	}
 }
