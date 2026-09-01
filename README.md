@@ -19,6 +19,8 @@ Le code de l’application NexU (sous license EUPL) a été partiellement repris
 
 Le code présent dans ce dépôt permet de générer les installateurs pour les systèmes d’exploitation Windows, MacOS et Linux
 
+Esup-DSS-Client se connecte à Esup-Signature en WSS et peut prendre en charge plusieurs documents au cours d’une même session de signature.
+
 ## Compilation / Obtention des installateurs
 
 ### Sous Linux

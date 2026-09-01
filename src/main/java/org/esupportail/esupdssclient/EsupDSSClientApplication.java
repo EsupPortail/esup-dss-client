@@ -23,7 +23,7 @@ import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
 import org.esupportail.esupdssclient.api.plugin.InitializationMessage;
 import org.esupportail.esupdssclient.dssclient.DssClientSetupDialog;
-import org.esupportail.esupdssclient.dssclient.DssClientWebSocketService;
+import org.esupportail.esupdssclient.dssclient.DssClientConnectionManager;
 import org.esupportail.esupdssclient.flow.BasicFlowRegistry;
 import org.esupportail.esupdssclient.flow.Flow;
 import org.esupportail.esupdssclient.flow.FlowRegistry;
@@ -42,7 +42,7 @@ public class EsupDSSClientApplication extends Application {
 
 	private static final Logger logger = LoggerFactory.getLogger(EsupDSSClientApplication.class.getName());
 
-	private DssClientWebSocketService dssClientWebSocketService;
+	private DssClientConnectionManager dssClientConnectionManager;
 	
 	private AppConfig getConfig() {
 		return EsupDSSClientLauncher.getConfig();
@@ -64,20 +64,20 @@ public class EsupDSSClientApplication extends Application {
 		final EsupDSSClientAPI api = buildAPI(uiDisplay, operationFactory);
 
 		final UserPreferences prefs = new UserPreferences(getConfig().getApplicationName());
-		dssClientWebSocketService = new DssClientWebSocketService(api, prefs, uiDisplay);
-		dssClientWebSocketService.startIfConfigured();
+		dssClientConnectionManager = new DssClientConnectionManager(api, prefs, uiDisplay);
+		dssClientConnectionManager.startIfConfigured();
 
 		boolean systrayInitialized = false;
 		if(api.getAppConfig().isEnableSystrayMenu()) {
-			systrayInitialized = new SystrayMenu(operationFactory, api, prefs, dssClientWebSocketService).isInitialized();
+			systrayInitialized = new SystrayMenu(operationFactory, api, prefs, dssClientConnectionManager).isInitialized();
 		} else {
 			logger.info("Systray menu is disabled.");
 		}
 		if (!systrayInitialized) {
-			new SystrayFallbackWindow().show(primaryStage, api, operationFactory, prefs, dssClientWebSocketService);
+			new SystrayFallbackWindow().show(primaryStage, api, operationFactory, prefs, dssClientConnectionManager);
 		}
 		if (!prefs.hasDssClientCredential()) {
-			new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientWebSocketService).show();
+			new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientConnectionManager).show();
 		}
 
 		logger.info("Start finished");
@@ -111,9 +111,9 @@ public class EsupDSSClientApplication extends Application {
 	public void stop() throws Exception {
 		logger.info("Stopping application...");
 		try {
-			if(dssClientWebSocketService != null) {
-				dssClientWebSocketService.stop();
-				dssClientWebSocketService = null;
+			if(dssClientConnectionManager != null) {
+				dssClientConnectionManager.stop();
+				dssClientConnectionManager = null;
 			}
 		} catch (final Exception e) {
 			logger.error("Cannot stop server", e);

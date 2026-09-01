@@ -21,7 +21,7 @@ import org.esupportail.esupdssclient.api.flow.FutureOperationInvocation;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
 import org.esupportail.esupdssclient.api.flow.OperationResult;
 import org.esupportail.esupdssclient.dssclient.DssClientSetupDialog;
-import org.esupportail.esupdssclient.dssclient.DssClientWebSocketService;
+import org.esupportail.esupdssclient.dssclient.DssClientConnectionManager;
 import org.esupportail.esupdssclient.systray.SystrayMenuInitializer;
 import org.esupportail.esupdssclient.view.core.NonBlockingUIOperation;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ public class SystrayMenu {
 	private final boolean initialized;
 
 	public SystrayMenu(OperationFactory operationFactory, EsupDSSClientAPI api, UserPreferences prefs,
-			DssClientWebSocketService dssClientWebSocketService) {
+			DssClientConnectionManager dssClientConnectionManager) {
 		logger.info("Starting systray menu");
 		final ResourceBundle resources = ResourceBundle.getBundle("bundles/api");
 
@@ -57,7 +57,7 @@ public class SystrayMenu {
 
 		systrayMenuItems[0] = createAboutSystrayMenuItem(operationFactory, api, resources);
 		systrayMenuItems[1] = createPreferencesSystrayMenuItem(operationFactory, api, prefs, resources);
-		systrayMenuItems[2] = createDssClientAssociationSystrayMenuItem(api, prefs, dssClientWebSocketService, resources);
+		systrayMenuItems[2] = createDssClientAssociationSystrayMenuItem(api, prefs, dssClientConnectionManager, resources);
 
 		int i = 3;
 		for(final SystrayMenuItem systrayMenuItem : extensionSystrayMenuItems) {
@@ -221,7 +221,7 @@ public class SystrayMenu {
 	}
 
 	private SystrayMenuItem createDssClientAssociationSystrayMenuItem(final EsupDSSClientAPI api, final UserPreferences prefs,
-			final DssClientWebSocketService dssClientWebSocketService, final ResourceBundle resources) {
+			final DssClientConnectionManager dssClientConnectionManager, final ResourceBundle resources) {
 		return new SystrayMenuItem() {
 			@Override
 			public String getLabel() {
@@ -233,7 +233,7 @@ public class SystrayMenu {
 				return new FutureOperationInvocation<Void>() {
 					@Override
 					public OperationResult<Void> call(OperationFactory operationFactory) {
-						new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientWebSocketService).show();
+						new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientConnectionManager).show();
 						return new OperationResult<Void>((Void) null);
 					}
 				};

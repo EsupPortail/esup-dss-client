@@ -6,7 +6,6 @@ import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
 import eu.europa.esig.dss.model.SignatureValue;
 import eu.europa.esig.dss.model.ToBeSigned;
 import org.esupportail.esupdssclient.StandaloneUIDisplay;
-import org.esupportail.esupdssclient.UserPreferences;
 import org.esupportail.esupdssclient.api.*;
 import org.esupportail.esupdssclient.api.flow.BasicOperationStatus;
 import org.junit.Test;
@@ -14,6 +13,7 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -110,6 +110,68 @@ public class DssClientWebSocketServiceTest {
 		assertEquals("sign_response", response.get("type").getAsString());
 		assertEquals("c2NhbGFyLXNpZ25hdHVyZQ==", response.get("signatureValue").getAsString());
 		assertFalse(response.has("signatureValues"));
+		verify(context.uiDisplay).confirmDssClientSignature(null, "https://signature.example.org");
+	}
+
+	@Test
+	public void ignoresMessageOriginWhenConfirmingSignature() throws Exception {
+		WebSocketContext context = context();
+		SignatureValue signature = new SignatureValue(SignatureAlgorithm.RSA_SHA256,
+				"signature".getBytes(StandardCharsets.UTF_8));
+		when(context.api.sign(any(SignatureRequest.class))).thenReturn(
+				new Execution<>(new SignatureResponse(signature, null, null)));
+
+		context.service.handleSignRequest(JsonParser.parseString(
+				"{\"type\":\"sign_request\",\"correlationId\":\"origin\","
+						+ "\"origin\":\"https://attacker.example\",\"dataToSign\":\"dW4=\",\"digestAlgo\":\"SHA256\"}")
+				.getAsJsonObject());
+
+		verify(context.uiDisplay).confirmDssClientSignature(null, "https://signature.example.org");
+	}
+
+	@Test
+	public void connectionStatusRequiresServerAuthenticationAcknowledgement() throws Exception {
+		WebSocketContext context = context();
+
+		context.service.onText(context.webSocket, "{\"type\":\"association_pending\"}", true);
+		assertEquals(DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL,
+				context.statuses.get(context.statuses.size() - 1));
+
+		context.service.onText(context.webSocket, "{\"type\":\"authenticated\"}", true);
+		assertEquals(DssClientConnectionManager.ConnectionStatus.CONNECTED,
+				context.statuses.get(context.statuses.size() - 1));
+	}
+
+	@Test
+	public void rejectsSignRequestBeforeServerAuthentication() throws Exception {
+		WebSocketContext context = context();
+
+		context.service.onText(context.webSocket,
+				"{\"type\":\"sign_request\",\"correlationId\":\"unauthenticated\","
+						+ "\"dataToSign\":\"dW4=\",\"digestAlgo\":\"SHA256\"}", true);
+
+		verify(context.api, never()).sign(any(SignatureRequest.class));
+		JsonObject response = lastSentMessage(context.webSocket);
+		assertEquals("error", response.get("type").getAsString());
+		assertEquals("client.not_authenticated", response.get("errorCode").getAsString());
+	}
+
+	@Test
+	public void rejectsARequestWhileAnotherAssociationIsSigning() throws Exception {
+		DssClientSigningCoordinator coordinator = new DssClientSigningCoordinator();
+		WebSocketContext first = context(coordinator, "first");
+		WebSocketContext second = context(coordinator, "second");
+		coordinator.acquire(first.service);
+
+		second.service.handleSignRequest(JsonParser.parseString(
+				"{\"type\":\"sign_request\",\"correlationId\":\"busy\","
+						+ "\"dataToSign\":\"dW4=\",\"digestAlgo\":\"SHA256\"}").getAsJsonObject());
+
+		JsonObject response = lastSentMessage(second.webSocket);
+		assertEquals("error", response.get("type").getAsString());
+		assertEquals("client.busy", response.get("errorCode").getAsString());
+		verify(second.api, never()).sign(any(SignatureRequest.class));
+		coordinator.release(first.service);
 	}
 
 	@Test
@@ -129,10 +191,18 @@ public class DssClientWebSocketServiceTest {
 	}
 
 	private WebSocketContext context() throws Exception {
+		return context(new DssClientSigningCoordinator(), "device-id");
+	}
+
+	private WebSocketContext context(DssClientSigningCoordinator coordinator, String deviceId) throws Exception {
 		EsupDSSClientAPI api = mock(EsupDSSClientAPI.class);
 		StandaloneUIDisplay uiDisplay = mock(StandaloneUIDisplay.class);
 		when(uiDisplay.confirmDssClientSignature(any(), any())).thenReturn(true);
-		DssClientWebSocketService service = new DssClientWebSocketService(api, mock(UserPreferences.class), uiDisplay);
+		DssClientAssociation association = new DssClientAssociation("https://signature.example.org", deviceId,
+				"secret", "wss://signature.example.org/ws");
+		List<DssClientConnectionManager.ConnectionStatus> statuses = new ArrayList<>();
+		DssClientWebSocketService service = new DssClientWebSocketService(api, association, uiDisplay,
+				coordinator, statuses::add, () -> {});
 		GetCertificateResponse certificate = new GetCertificateResponse();
 		certificate.setTokenId(new TokenId("token"));
 		certificate.setKeyId("key");
@@ -142,7 +212,7 @@ public class DssClientWebSocketServiceTest {
 		when(webSocket.sendText(any(CharSequence.class), anyBoolean()))
 				.thenReturn(CompletableFuture.completedFuture(webSocket));
 		setField(service, "webSocket", webSocket);
-		return new WebSocketContext(service, api, webSocket);
+		return new WebSocketContext(service, api, uiDisplay, webSocket, statuses);
 	}
 
 	private JsonObject lastSentMessage(WebSocket webSocket) {
@@ -158,5 +228,6 @@ public class DssClientWebSocketServiceTest {
 	}
 
 	private record WebSocketContext(DssClientWebSocketService service, EsupDSSClientAPI api,
-			WebSocket webSocket) {}
+			StandaloneUIDisplay uiDisplay,
+			WebSocket webSocket, List<DssClientConnectionManager.ConnectionStatus> statuses) {}
 }

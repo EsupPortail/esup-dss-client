@@ -8,7 +8,6 @@ import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.model.ToBeSigned;
 import eu.europa.esig.dss.model.x509.CertificateToken;
 import org.esupportail.esupdssclient.StandaloneUIDisplay;
-import org.esupportail.esupdssclient.UserPreferences;
 import org.esupportail.esupdssclient.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,14 +29,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private static final Logger logger = LoggerFactory.getLogger(DssClientWebSocketService.class);
 
 	private final EsupDSSClientAPI api;
-	private final UserPreferences preferences;
+	private final DssClientAssociation association;
 	private final StandaloneUIDisplay uiDisplay;
+	private final DssClientSigningCoordinator signingCoordinator;
+	private final Consumer<DssClientConnectionManager.ConnectionStatus> statusListener;
+	private final Runnable revokedListener;
 	private final Gson gson = new Gson();
 	private final SecureRandom secureRandom = new SecureRandom();
 	private final DssClientPromptWindow promptWindow = new DssClientPromptWindow();
@@ -49,48 +52,63 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private volatile WebSocket webSocket;
 	private volatile ScheduledFuture<?> heartbeat;
+	private volatile ScheduledFuture<?> reconnect;
 	private volatile GetCertificateResponse lastCertificate;
 	private volatile DocumentContext lastDocumentContext;
+	private volatile boolean stopped;
+	private volatile boolean connecting;
+	private volatile boolean pendingApproval;
+	private volatile boolean authenticated;
 
-	public DssClientWebSocketService(EsupDSSClientAPI api, UserPreferences preferences, StandaloneUIDisplay uiDisplay) {
+	DssClientWebSocketService(EsupDSSClientAPI api, DssClientAssociation association, StandaloneUIDisplay uiDisplay,
+			DssClientSigningCoordinator signingCoordinator,
+			Consumer<DssClientConnectionManager.ConnectionStatus> statusListener, Runnable revokedListener) {
 		this.api = api;
-		this.preferences = preferences;
+		this.association = association;
 		this.uiDisplay = uiDisplay;
-	}
-
-	public void startIfConfigured() {
-		if (!preferences.hasDssClientCredential()) {
-			logger.info("No associated esup-signature device configured.");
-			return;
-		}
-		logger.info("Associated esup-signature device found: {}. Starting WebSocket connection.",
-				maskDeviceId(preferences.getDssClientDeviceId()));
-		connect();
+		this.signingCoordinator = signingCoordinator;
+		this.statusListener = statusListener;
+		this.revokedListener = revokedListener;
 	}
 
 	public synchronized void connect() {
-		if (!preferences.hasDssClientCredential()) {
+		if (stopped) {
 			return;
 		}
-		if (webSocket != null && !webSocket.isOutputClosed() && !webSocket.isInputClosed()) {
+		if (connecting || webSocket != null && !webSocket.isOutputClosed() && !webSocket.isInputClosed()) {
 			return;
 		}
 		logger.info("Connecting to esup-signature DSS client WebSocket {} with device {}",
-				preferences.getDssClientWebsocketUrl(), maskDeviceId(preferences.getDssClientDeviceId()));
-		URI websocketUri = URI.create(preferences.getDssClientWebsocketUrl());
+				association.getWebsocketUrl(), maskDeviceId(association.getDeviceId()));
+		statusListener.accept(pendingApproval
+				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
+				: DssClientConnectionManager.ConnectionStatus.CONNECTING);
+		connecting = true;
+		URI websocketUri = URI.create(association.getWebsocketUrl());
+		if ("ws".equalsIgnoreCase(websocketUri.getScheme()) && !DssClientPairingService.isInsecureHttpAllowed()) {
+			connecting = false;
+			logger.error("Refusing insecure DSS client WebSocket {}. Use -D{}=true only for development.",
+					association.getWebsocketUrl(), DssClientPairingService.ALLOW_INSECURE_HTTP_PROPERTY);
+			statusListener.accept(DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
+			return;
+		}
 		HttpClient.newHttpClient().newWebSocketBuilder()
 				.header("Origin", originFor(websocketUri))
 				.header("User-Agent", "Esup-DSS-Client/" + api.getAppConfig().getApplicationVersion())
 				.buildAsync(websocketUri, this)
 				.whenComplete((socket, error) -> {
+					connecting = false;
 					if (error != null) {
 						logger.warn("Unable to connect DSS client WebSocket {} for device {}: {}",
-								preferences.getDssClientWebsocketUrl(), maskDeviceId(preferences.getDssClientDeviceId()),
+								association.getWebsocketUrl(), maskDeviceId(association.getDeviceId()),
 								error.getMessage(), error);
+						statusListener.accept(DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
 						logHandshakeFailure(error);
 						scheduleReconnect();
+					} else if (stopped) {
+						socket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
 					} else {
-						logger.info("DSS client WebSocket build completed for device {}", maskDeviceId(preferences.getDssClientDeviceId()));
+						logger.info("DSS client WebSocket build completed for device {}", maskDeviceId(association.getDeviceId()));
 						webSocket = socket;
 					}
 				});
@@ -121,21 +139,40 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	public synchronized void stop() {
+		stopped = true;
+		connecting = false;
 		if (heartbeat != null) {
 			heartbeat.cancel(true);
 			heartbeat = null;
+		}
+		if (reconnect != null) {
+			reconnect.cancel(true);
+			reconnect = null;
 		}
 		WebSocket socket = webSocket;
 		webSocket = null;
 		if (socket != null) {
 			socket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
 		}
+		if (signingCoordinator.release(this)) {
+			uiDisplay.finishDssClientSigningSession();
+		}
+		scheduler.shutdownNow();
+		statusListener.accept(DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
 	}
 
 	@Override
 	public void onOpen(WebSocket webSocket) {
+		if (stopped) {
+			webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "shutdown");
+			return;
+		}
 		this.webSocket = webSocket;
-		logger.info("DSS client WebSocket opened for device {}", maskDeviceId(preferences.getDssClientDeviceId()));
+		authenticated = false;
+		logger.info("DSS client WebSocket opened for device {}", maskDeviceId(association.getDeviceId()));
+		statusListener.accept(pendingApproval
+				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
+				: DssClientConnectionManager.ConnectionStatus.CONNECTING);
 		sendHello(webSocket);
 		startHeartbeat();
 		WebSocket.Listener.super.onOpen(webSocket);
@@ -163,13 +200,20 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	@Override
 	public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
 		logger.warn("DSS client WebSocket closed for device {}: status={} reason={}",
-				maskDeviceId(preferences.getDssClientDeviceId()), statusCode, reason);
+				maskDeviceId(association.getDeviceId()), statusCode, reason);
 		this.webSocket = null;
+		authenticated = false;
+		statusListener.accept(pendingApproval
+				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
+				: DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
+		if (signingCoordinator.release(this)) {
+			uiDisplay.finishDssClientSigningSession();
+		}
 		if (heartbeat != null) {
 			heartbeat.cancel(true);
 			heartbeat = null;
 		}
-		if (preferences.hasDssClientCredential()) {
+		if (!stopped) {
 			scheduleReconnect();
 		}
 		return CompletableFuture.completedFuture(null);
@@ -178,9 +222,16 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	@Override
 	public void onError(WebSocket webSocket, Throwable error) {
 		logger.warn("DSS client WebSocket error for device {}: {}",
-				maskDeviceId(preferences.getDssClientDeviceId()), error.getMessage(), error);
+				maskDeviceId(association.getDeviceId()), error.getMessage(), error);
 		this.webSocket = null;
-		if (preferences.hasDssClientCredential()) {
+		authenticated = false;
+		statusListener.accept(pendingApproval
+				? DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL
+				: DssClientConnectionManager.ConnectionStatus.DISCONNECTED);
+		if (signingCoordinator.release(this)) {
+			uiDisplay.finishDssClientSigningSession();
+		}
+		if (!stopped) {
 			scheduleReconnect();
 		}
 	}
@@ -188,13 +239,13 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	private void sendHello(WebSocket socket) {
 		String timestamp = Instant.now().toString();
 		String nonce = nonce();
-		String deviceId = preferences.getDssClientDeviceId();
+		String deviceId = association.getDeviceId();
 		Map<String, String> hello = new LinkedHashMap<>();
 		hello.put("type", "hello");
 		hello.put("deviceId", deviceId);
 		hello.put("timestamp", timestamp);
 		hello.put("nonce", nonce);
-		hello.put("signature", hmacHex(preferences.getDssClientSecret(), deviceId + "|" + timestamp + "|" + nonce));
+		hello.put("signature", hmacHex(association.getSecret(), deviceId + "|" + timestamp + "|" + nonce));
 		logger.info("Sending DSS client hello for device {} at {}", maskDeviceId(deviceId), timestamp);
 		socket.sendText(gson.toJson(hello), true).whenComplete((ignored, error) -> {
 			if (error != null) {
@@ -214,9 +265,16 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 	}
 
 	private void scheduleReconnect() {
-		logger.info("Scheduling DSS client WebSocket reconnect in 30 seconds for device {}",
-				maskDeviceId(preferences.getDssClientDeviceId()));
-		scheduler.schedule(this::connect, 30, TimeUnit.SECONDS);
+		if (stopped || scheduler.isShutdown() || reconnect != null && !reconnect.isDone()) {
+			return;
+		}
+		long delaySeconds = pendingApproval ? 2 : 30;
+		logger.info("Scheduling DSS client WebSocket reconnect in {} seconds for device {}",
+				delaySeconds, maskDeviceId(association.getDeviceId()));
+		reconnect = scheduler.schedule(() -> {
+			reconnect = null;
+			connect();
+		}, delaySeconds, TimeUnit.SECONDS);
 	}
 
 	private void handleMessage(JsonObject message) {
@@ -224,15 +282,37 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		logger.info("DSS client WebSocket message received: type={} correlationId={}", type, getString(message, "correlationId"));
 		switch (type) {
 		case "device_revoked":
-			logger.warn("DSS client device has been revoked by esup-signature.");
-			preferences.clearDssClientCredential();
-			stop();
-			showInformation("Association revoquee", "Ce client a ete revoque dans esup-signature. Il repasse en mode nouvelle installation.");
+			logger.warn("DSS client device has been revoked by esup-signature: {}.", association.getAssociatedUrl());
+			revokedListener.run();
+			showInformation("Association révoquée", "L'association avec " + association.getAssociatedUrl()
+					+ " a été révoquée dans esup-signature.");
+			break;
+		case "authentication_failed":
+			pendingApproval = false;
+			logger.info("DSS client authentication refused for {} (association pending or credentials invalid).",
+					association.getAssociatedUrl());
+			break;
+		case "association_pending":
+			pendingApproval = true;
+			statusListener.accept(DssClientConnectionManager.ConnectionStatus.WAITING_APPROVAL);
+			logger.info("DSS client association is waiting for approval on {}.", association.getAssociatedUrl());
+			break;
+		case "authenticated":
+			pendingApproval = false;
+			authenticated = true;
+			statusListener.accept(DssClientConnectionManager.ConnectionStatus.CONNECTED);
+			logger.info("DSS client authenticated on {}.", association.getAssociatedUrl());
 			break;
 		case "certificate_request":
+			if (!requireAuthenticated(message)) {
+				break;
+			}
 			handleCertificateRequest(message);
 			break;
 		case "sign_request":
+			if (!requireAuthenticated(message)) {
+				break;
+			}
 			handleSignRequest(message);
 			break;
 		default:
@@ -241,8 +321,23 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		}
 	}
 
+	private boolean requireAuthenticated(JsonObject message) {
+		if (authenticated) {
+			return true;
+		}
+		String correlationId = getString(message, "correlationId");
+		logger.warn("Rejecting DSS client request before server authentication: type={} correlationId={}",
+				getString(message, "type"), correlationId);
+		sendError(correlationId, "client.not_authenticated", "Le serveur esup-signature n'est pas authentifié");
+		return false;
+	}
+
 	private void handleCertificateRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
+		if (!signingCoordinator.acquire(this)) {
+			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours");
+			return;
+		}
 		lastDocumentContext = documentContext(message);
 		uiDisplay.startDssClientSigningSession();
 		try {
@@ -277,6 +372,10 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 
 	void handleSignRequest(JsonObject message) {
 		String correlationId = getString(message, "correlationId");
+		if (!signingCoordinator.acquire(this)) {
+			sendError(correlationId, "client.busy", "Une autre demande de signature est déjà en cours");
+			return;
+		}
 		DocumentContext documentContext = documentContext(message);
 		try {
 			boolean batchRequest = message.has("dataToSign") && message.get("dataToSign").isJsonArray();
@@ -359,6 +458,7 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 
 	private void finishWssUiFlow() {
 		uiDisplay.finishDssClientSigningSession();
+		signingCoordinator.release(this);
 	}
 
 	private boolean confirmSignature(String documentName, String origin) throws InterruptedException {
@@ -374,16 +474,14 @@ public class DssClientWebSocketService implements WebSocket.Listener {
 		if (documentName == null) {
 			documentName = getString(message, "documentTitle");
 		}
-		String origin = getString(message, "origin");
 		if (lastDocumentContext != null) {
 			if (documentName == null) {
 				documentName = lastDocumentContext.documentName();
 			}
-			if (origin == null) {
-				origin = lastDocumentContext.origin();
-			}
 		}
-		return new DocumentContext(documentName, origin);
+		// The provenance shown to the user is the locally stored association.
+		// A network message must not be able to replace this trusted display value.
+		return new DocumentContext(documentName, association.getAssociatedUrl());
 	}
 
 	private void sendError(String correlationId, String errorCode, String errorMessage) {

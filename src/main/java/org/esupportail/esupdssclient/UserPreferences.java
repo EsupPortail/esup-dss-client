@@ -13,6 +13,13 @@
  */
 package org.esupportail.esupdssclient;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.esupportail.esupdssclient.dssclient.DssClientAssociation;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
@@ -30,8 +37,12 @@ public class UserPreferences {
 	private static final String DSS_CLIENT_DEVICE_ID = "org.esupportail.esupdssclient.dssClient.deviceId";
 	private static final String DSS_CLIENT_SECRET = "org.esupportail.esupdssclient.dssClient.secret";
 	private static final String DSS_CLIENT_WEBSOCKET_URL = "org.esupportail.esupdssclient.dssClient.websocketUrl";
+	private static final String DSS_CLIENT_ASSOCIATED_URL = "org.esupportail.esupdssclient.dssClient.associatedUrl";
+	private static final String DSS_CLIENT_ASSOCIATIONS = "org.esupportail.esupdssclient.dssClient.associations";
+	private static final Type DSS_CLIENT_ASSOCIATION_LIST_TYPE = new TypeToken<List<DssClientAssociation>>() {}.getType();
 
 	private final Preferences prefs;
+	private final Gson gson = new Gson();
 
 	private String driver;
 	private String certId;
@@ -42,9 +53,7 @@ public class UserPreferences {
 	private Boolean proxyAuthentication;
 	private String proxyUsername;
 	private String proxyPassword;
-	private String dssClientDeviceId;
-	private String dssClientSecret;
-	private String dssClientWebsocketUrl;
+	private List<DssClientAssociation> dssClientAssociations;
 
 	public UserPreferences(final String applicationName) {
 		prefs = Preferences.userRoot().node(applicationName);
@@ -69,9 +78,7 @@ public class UserPreferences {
 		
 		proxyUsername = prefs.get(PROXY_USERNAME, null);
 		proxyPassword = prefs.get(PROXY_PASSWORD, null);
-		dssClientDeviceId = prefs.get(DSS_CLIENT_DEVICE_ID, null);
-		dssClientSecret = prefs.get(DSS_CLIENT_SECRET, null);
-		dssClientWebsocketUrl = prefs.get(DSS_CLIENT_WEBSOCKET_URL, null);
+		dssClientAssociations = loadDssClientAssociations();
 	}
 
 	public void setDriver(String driver) {
@@ -191,39 +198,71 @@ public class UserPreferences {
 		return proxyPassword;
 	}
 
-	public boolean hasDssClientCredential() {
-		return dssClientDeviceId != null && dssClientSecret != null && dssClientWebsocketUrl != null;
+	public synchronized boolean hasDssClientCredential() {
+		return !dssClientAssociations.isEmpty();
 	}
 
-	public String getDssClientDeviceId() {
-		return dssClientDeviceId;
+	public synchronized List<DssClientAssociation> getDssClientAssociations() {
+		return List.copyOf(dssClientAssociations);
 	}
 
-	public String getDssClientSecret() {
-		return dssClientSecret;
-	}
-
-	public String getDssClientWebsocketUrl() {
-		return dssClientWebsocketUrl;
-	}
-
-	public void setDssClientCredential(String deviceId, String secret, String websocketUrl) {
-		if(deviceId != null && secret != null && websocketUrl != null) {
-			prefs.put(DSS_CLIENT_DEVICE_ID, deviceId);
-			prefs.put(DSS_CLIENT_SECRET, secret);
-			prefs.put(DSS_CLIENT_WEBSOCKET_URL, websocketUrl);
-		} else {
-			prefs.remove(DSS_CLIENT_DEVICE_ID);
-			prefs.remove(DSS_CLIENT_SECRET);
-			prefs.remove(DSS_CLIENT_WEBSOCKET_URL);
+	public synchronized void addDssClientAssociation(DssClientAssociation association) {
+		if (association == null || !association.isComplete()) {
+			throw new IllegalArgumentException("L'association esup-signature est incomplete");
 		}
-		this.dssClientDeviceId = deviceId;
-		this.dssClientSecret = secret;
-		this.dssClientWebsocketUrl = websocketUrl;
+		dssClientAssociations.removeIf(existing -> existing.getDeviceId().equals(association.getDeviceId())
+				|| existing.getAssociatedUrl().equals(association.getAssociatedUrl()));
+		dssClientAssociations.add(association);
+		storeDssClientAssociations();
 	}
 
-	public void clearDssClientCredential() {
-		setDssClientCredential(null, null, null);
+	public synchronized void removeDssClientAssociation(String deviceId) {
+		if (dssClientAssociations.removeIf(association -> association.getDeviceId().equals(deviceId))) {
+			storeDssClientAssociations();
+		}
+	}
+
+	private List<DssClientAssociation> loadDssClientAssociations() {
+		String storedAssociations = prefs.get(DSS_CLIENT_ASSOCIATIONS, null);
+		if (storedAssociations != null && !storedAssociations.isBlank()) {
+			try {
+				List<DssClientAssociation> associations = gson.fromJson(storedAssociations, DSS_CLIENT_ASSOCIATION_LIST_TYPE);
+				if (associations != null) {
+					return new ArrayList<>(associations.stream().filter(DssClientAssociation::isComplete).toList());
+				}
+			} catch (RuntimeException ignored) {
+				// An unreadable local value is treated as an absent association.
+			}
+			return new ArrayList<>();
+		}
+
+		List<DssClientAssociation> associations = new ArrayList<>();
+		DssClientAssociation legacyAssociation = new DssClientAssociation(
+				prefs.get(DSS_CLIENT_ASSOCIATED_URL, null),
+				prefs.get(DSS_CLIENT_DEVICE_ID, null),
+				prefs.get(DSS_CLIENT_SECRET, null),
+				prefs.get(DSS_CLIENT_WEBSOCKET_URL, null));
+		if (legacyAssociation.isComplete()) {
+			associations.add(legacyAssociation);
+			prefs.put(DSS_CLIENT_ASSOCIATIONS, gson.toJson(associations));
+		}
+		removeLegacyDssClientCredential();
+		return associations;
+	}
+
+	private void storeDssClientAssociations() {
+		if (dssClientAssociations.isEmpty()) {
+			prefs.remove(DSS_CLIENT_ASSOCIATIONS);
+		} else {
+			prefs.put(DSS_CLIENT_ASSOCIATIONS, gson.toJson(dssClientAssociations));
+		}
+	}
+
+	private void removeLegacyDssClientCredential() {
+		prefs.remove(DSS_CLIENT_DEVICE_ID);
+		prefs.remove(DSS_CLIENT_SECRET);
+		prefs.remove(DSS_CLIENT_WEBSOCKET_URL);
+		prefs.remove(DSS_CLIENT_ASSOCIATED_URL);
 	}
 
 	public void clear() {
@@ -239,8 +278,6 @@ public class UserPreferences {
 		proxyAuthentication = null;
 		proxyUsername = null;
 		proxyPassword = null;
-		dssClientDeviceId = null;
-		dssClientSecret = null;
-		dssClientWebsocketUrl = null;
+		dssClientAssociations = new ArrayList<>();
 	}
 }

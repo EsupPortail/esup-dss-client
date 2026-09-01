@@ -32,7 +32,7 @@ import org.esupportail.esupdssclient.api.EsupDSSClientAPI;
 import org.esupportail.esupdssclient.api.SystrayMenuItem;
 import org.esupportail.esupdssclient.api.flow.OperationFactory;
 import org.esupportail.esupdssclient.dssclient.DssClientSetupDialog;
-import org.esupportail.esupdssclient.dssclient.DssClientWebSocketService;
+import org.esupportail.esupdssclient.dssclient.DssClientConnectionManager;
 import org.esupportail.esupdssclient.view.core.NonBlockingUIOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,14 +54,14 @@ public class SystrayFallbackWindow {
 	private final ResourceBundle resources = ResourceBundle.getBundle("bundles/api");
 
 	public void show(final Stage stage, final EsupDSSClientAPI api, final OperationFactory operationFactory,
-			final UserPreferences prefs, final DssClientWebSocketService dssClientWebSocketService) {
+			final UserPreferences prefs, final DssClientConnectionManager dssClientConnectionManager) {
 		final AppConfig config = api.getAppConfig();
 		stage.setTitle(config.getApplicationName());
 		stage.setMinWidth(560);
 		stage.setMinHeight(360);
 		stage.setOnCloseRequest(event -> exitApplication());
 
-		final Scene scene = new Scene(createRoot(stage, api, operationFactory, prefs, dssClientWebSocketService), 640, 480);
+		final Scene scene = new Scene(createRoot(stage, api, operationFactory, prefs, dssClientConnectionManager), 640, 480);
 		scene.getStylesheets().add(getClass().getResource("/styles/esupdssclient.css").toString());
 		stage.setScene(scene);
 		stage.show();
@@ -70,7 +70,7 @@ public class SystrayFallbackWindow {
 
 	private BorderPane createRoot(final Stage stage, final EsupDSSClientAPI api,
 			final OperationFactory operationFactory, final UserPreferences prefs,
-			final DssClientWebSocketService dssClientWebSocketService) {
+			final DssClientConnectionManager dssClientConnectionManager) {
 		final AppConfig config = api.getAppConfig();
 		final BorderPane root = new BorderPane();
 		root.getStyleClass().add("fallback-root");
@@ -120,7 +120,7 @@ public class SystrayFallbackWindow {
 
 		final Button dssClientAssociation = new Button(resources.getString("systray.menu.dssclient.association"));
 		dssClientAssociation.getStyleClass().add("btn-info");
-		dssClientAssociation.setOnAction(e -> new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientWebSocketService).show());
+		dssClientAssociation.setOnAction(e -> new DssClientSetupDialog(prefs, api.getAppConfig(), dssClientConnectionManager).show());
 		actionButtons.getChildren().add(dssClientAssociation);
 
 		final List<SystrayMenuItem> extensions = api.getExtensionSystrayMenuItems();
