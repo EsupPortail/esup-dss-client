@@ -209,7 +209,7 @@ public class DssClientSetupDialog {
 		pairingUrlField.setPromptText("https://signature.exemple.fr/dss-client/pair?code=...");
 		pairingUrlField.setMaxWidth(Double.MAX_VALUE);
 		pairingUrlField.setPrefHeight(58);
-		pairingUrlField.setStyle("-fx-font-size: 30px; -fx-text-fill: #111111; "
+		pairingUrlField.setStyle("-fx-font-size: 15px; -fx-text-fill: #111111; "
 				+ "-fx-control-inner-background: #ffffff;");
 		VBox pairingContent = new VBox(22, instruction, pairingUrlField);
 		pairingContent.setPadding(new Insets(12, 4, 4, 4));
