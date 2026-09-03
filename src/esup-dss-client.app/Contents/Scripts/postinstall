@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-sudo chmod +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-21.jre/Contents/Home/bin/java
-sudo chmod +x /Applications/esup-dss-client.app/Contents/Resources/jdkmac/zulu-21.jre/Contents/Home/lib/jspawnhelper
-sudo chmod +x /Applications/esup-dss-client.app/Contents/scripts/opensc_mac.sh
-sudo chmod +x /Applications/esup-dss-client.app/Contents/scripts/shortcut_mac.sh
-sudo /Applications/esup-dss-client.app/Contents/scripts/opensc_mac.sh
-sudo /Applications/esup-dss-client.app/Contents/scripts/shortcut_mac.sh
 
+set -euo pipefail
+
+readonly APP_PATH="/Applications/esup-dss-client.app"
+
+chmod +x "${APP_PATH}/Contents/Resources/jdkmac/zulu-21.jre/Contents/Home/bin/java"
+chmod +x "${APP_PATH}/Contents/Resources/jdkmac/zulu-21.jre/Contents/Home/lib/jspawnhelper"
+chmod +x "${APP_PATH}/Contents/Scripts/opensc_mac.sh"
+chmod +x "${APP_PATH}/Contents/Scripts/shortcut_mac.sh"
+if ! "${APP_PATH}/Contents/Scripts/opensc_mac.sh"; then
+	echo "Avertissement : l'installation automatique d'OpenSC a échoué. OpenSC pourra être installé manuellement." >&2
+fi
+"${APP_PATH}/Contents/Scripts/shortcut_mac.sh"
