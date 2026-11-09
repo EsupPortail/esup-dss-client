@@ -79,27 +79,52 @@ public class StandaloneUIDisplay implements UIDisplay {
 			stage.setScene(scene);
 			stage.setTitle(StageHelper.getInstance().getTitle());
 			Stage finalStage = stage;
-			stage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
-				@Override
-				public void handle(WindowEvent event) {
-					Screen currentScreen = Screen.getPrimary();
-					PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-					int mouseX = (int) pointerInfo.getLocation().getX();
-					int mouseY = (int) pointerInfo.getLocation().getY();
-					for (Screen screen : Screen.getScreens()) {
-						Rectangle2D bounds = screen.getBounds();
-						if (bounds.contains(mouseX, mouseY)) {
-							currentScreen = screen;
-						}
-					}
-					Rectangle2D screenBounds = currentScreen.getVisualBounds();
-					finalStage.setX(((screenBounds.getWidth() - finalStage.getWidth()) / 2) + screenBounds.getMinX());
-					finalStage.setY((screenBounds.getHeight() - finalStage.getHeight()) / 2);
-				}
-			});
+			stage.setOnShown(event -> centerOnCurrentScreen(finalStage));
 			stage.show();
 			StageHelper.getInstance().setTitle("", null);
 		});
+	}
+
+	private void centerOnCurrentScreen(Stage stage) {
+		try {
+			Screen currentScreen = Screen.getPrimary();
+			if (!GraphicsEnvironment.isHeadless()) {
+				PointerInfo pointerInfo = MouseInfo.getPointerInfo();
+				if (pointerInfo != null) {
+					// AWT gives physical pixels, JavaFX uses scaled units: try both
+					double px = pointerInfo.getLocation().getX();
+					double py = pointerInfo.getLocation().getY();
+					Screen found = null;
+					for (Screen screen : Screen.getScreens()) {
+						Rectangle2D b = screen.getBounds();
+						double sx = screen.getOutputScaleX();
+						double sy = screen.getOutputScaleY();
+						if (b.contains(px / sx, py / sy) || b.contains(px, py)) {
+							found = screen;
+							break;
+						}
+					}
+					if (found != null) {
+						currentScreen = found;
+					}
+				}
+			}
+			Rectangle2D area = currentScreen.getVisualBounds();
+			double w = stage.getWidth();
+			double h = stage.getHeight();
+			if (Double.isNaN(w) || Double.isNaN(h)) {
+				return;
+			}
+			double x = area.getMinX() + (area.getWidth() - w) / 2;
+			double y = area.getMinY() + (area.getHeight() - h) / 2;
+			// never let the window overflow the visible area
+			x = Math.max(area.getMinX(), Math.min(x, area.getMaxX() - w));
+			y = Math.max(area.getMinY(), Math.min(y, area.getMaxY() - h));
+			stage.setX(x);
+			stage.setY(y);
+		} catch (Exception e) {
+			logger.warn("Unable to center stage, using default position", e);
+		}
 	}
 
 	private Stage createStage(final boolean blockingStage, String title) {
