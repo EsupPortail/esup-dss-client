@@ -114,26 +114,10 @@ public class StandaloneUIDisplay implements UIDisplay {
 		newStage.setOnShown(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent event) {
-				centerOnPointerScreen(newStage);
+				StageCentering.centerOnPointerScreen(newStage);
 			}
 		});
 		return newStage;
-	}
-
-	private void centerOnPointerScreen(Stage stage) {
-		Screen currentScreen = Screen.getPrimary();
-		PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-		int mouseX = (int) pointerInfo.getLocation().getX();
-		int mouseY = (int) pointerInfo.getLocation().getY();
-		for (Screen screen : Screen.getScreens()) {
-			Rectangle2D bounds = screen.getBounds();
-			if (bounds.contains(mouseX, mouseY)) {
-				currentScreen = screen;
-			}
-		}
-		Rectangle2D screenBounds = currentScreen.getVisualBounds();
-		stage.setX(((screenBounds.getWidth() - stage.getWidth()) / 2) + screenBounds.getMinX());
-		stage.setY(((screenBounds.getHeight() - stage.getHeight()) / 2) + screenBounds.getMinY());
 	}
 
 	private void configureDefaultCloseRequest(Stage stage, boolean blockingStage) {

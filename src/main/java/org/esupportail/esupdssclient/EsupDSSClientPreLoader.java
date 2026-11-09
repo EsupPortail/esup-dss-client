@@ -82,24 +82,7 @@ public class EsupDSSClientPreLoader extends Preloader {
 			final Scene splashScene = new Scene(background, 700, 300);
 			primaryStage.setScene(splashScene);
 			primaryStage.initStyle(StageStyle.UNDECORATED);
-            primaryStage.addEventHandler(WindowEvent.WINDOW_SHOWN, new EventHandler<WindowEvent>() {
-				@Override
-				public void handle(WindowEvent event) {
-					Screen currentScreen = Screen.getPrimary();
-					PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-					int mouseX = (int) pointerInfo.getLocation().getX();
-					int mouseY = (int) pointerInfo.getLocation().getY();
-					for (Screen screen : Screen.getScreens()) {
-						Rectangle2D bounds = screen.getBounds();
-						if (bounds.contains(mouseX, mouseY)) {
-							currentScreen = screen;
-						}
-					}
-					Rectangle2D screenBounds = currentScreen.getVisualBounds();
-					primaryStage.setX(((screenBounds.getWidth() - primaryStage.getWidth()) / 2) + screenBounds.getMinX());
-					primaryStage.setY((screenBounds.getHeight() - primaryStage.getHeight()) / 2);
-				}
-			});
+			primaryStage.setOnShown(event -> StageCentering.centerOnPointerScreen(primaryStage));
 			primaryStage.show();
 			final PauseTransition delay = new PauseTransition(Duration.seconds(3));
 			delay.setOnFinished(event -> primaryStage.close());
