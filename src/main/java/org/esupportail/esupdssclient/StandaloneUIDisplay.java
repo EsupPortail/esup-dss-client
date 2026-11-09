@@ -133,7 +133,7 @@ public class StandaloneUIDisplay implements UIDisplay {
 		}
 		Rectangle2D screenBounds = currentScreen.getVisualBounds();
 		stage.setX(((screenBounds.getWidth() - stage.getWidth()) / 2) + screenBounds.getMinX());
-		stage.setY((screenBounds.getHeight() - stage.getHeight()) / 2);
+		stage.setY(((screenBounds.getHeight() - stage.getHeight()) / 2) + screenBounds.getMinY());
 	}
 
 	private void configureDefaultCloseRequest(Stage stage, boolean blockingStage) {
